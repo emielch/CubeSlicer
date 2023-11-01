@@ -135,7 +135,7 @@ public class CubeCam : MonoBehaviour {
             } else {
                 // Extract the color components from the output array
                 byte[] rtArray = request.GetData<byte>().ToArray();
-                Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray));
+                Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray, device.cubeInfo.width, device.cubeInfo.height, device.cubeInfo.depth));
                 fillLEDDataThread.Start();
             }
         });
@@ -143,24 +143,18 @@ public class CubeCam : MonoBehaviour {
         RenderTexture.ReleaseTemporary(renderTexture);
     }
 
-    void FillLEDData(byte[] rtArray) {
-        Debug.Log(rtArray.Length);
-        int width = device.cubeInfo.width;
-        int height = device.cubeInfo.height;
-        int depth = device.cubeInfo.depth;
-        //byte[] ledData = new byte[width * height * depth * 3];
-
+    void FillLEDData(byte[] rtArray, int w, int h, int d) {
         int id = 0;
-        for (int z = 0; z < depth; z++)
-            for (int y = 0; y < height; y++)
-                for (int x = 0; x < width; x++) {
+        for (int z = 0; z < d; z++)
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++) {
                     Color pix = new();
                     pix += camRigs[0].GetPixel(rtArray, x, y, z);
-                    pix += camRigs[1].GetPixel(rtArray, width - 1 - x, y, depth - 1 - z);
-                    pix += camRigs[2].GetPixel(rtArray, depth - 1 - z, y, x);
-                    pix += camRigs[3].GetPixel(rtArray, z, y, width - 1 - x);
-                    pix += camRigs[4].GetPixel(rtArray, x, z, height - 1 - y);
-                    pix += camRigs[5].GetPixel(rtArray, x, depth - 1 - z, y);
+                    pix += camRigs[1].GetPixel(rtArray, w - 1 - x, y, d - 1 - z);
+                    pix += camRigs[2].GetPixel(rtArray, d - 1 - z, y, x);
+                    pix += camRigs[3].GetPixel(rtArray, z, y, w - 1 - x);
+                    pix += camRigs[4].GetPixel(rtArray, x, z, h - 1 - y);
+                    pix += camRigs[5].GetPixel(rtArray, x, d - 1 - z, y);
 
                     Color.RGBToHSV(pix, out float H, out float S, out float V);
                     pix = Color.HSVToRGB(H, Mathf.Min(1, S * sat), V);
