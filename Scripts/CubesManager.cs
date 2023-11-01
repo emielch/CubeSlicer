@@ -11,12 +11,12 @@ using System;
 public class CubesManager : MonoBehaviour {
     public string[] portNames = { };
     public List<CubeDevice> cubeDevices;
-    public List<CubeCam> cubeCams;
+    public List<CubeSlicer> cubeSlicers;
 
 
     void Start() {
         cubeDevices = new List<CubeDevice>();
-        cubeCams = FindObjectsOfType<CubeCam>().ToList();
+        cubeSlicers = FindObjectsOfType<CubeSlicer>().ToList();
     }
 
     // Update is called once per frame
@@ -31,7 +31,7 @@ public class CubesManager : MonoBehaviour {
                     continue;
                 }
 
-                foreach (var cubeCam in cubeCams) {
+                foreach (var cubeCam in cubeSlicers) {
                     if (cubeCam.cubeID == cubeDevice.cubeInfo.id) {
                         cubeCam.Init(cubeDevice);
                         break;

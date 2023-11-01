@@ -11,7 +11,7 @@ using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
-public class CubeCam : MonoBehaviour {
+public class CubeSlicer : MonoBehaviour {
     public int cubeID;
     CubeDevice device;
     public RenderTexture rt;
@@ -22,7 +22,6 @@ public class CubeCam : MonoBehaviour {
     public Material edgesDisabledMat;
     public float bri = 0.1F;
     public float sat = 1F;
-    public int pos = 0;
     public float cubeScale;
     public Material rtMat;
 
