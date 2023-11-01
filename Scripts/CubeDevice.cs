@@ -70,7 +70,8 @@ public class CubeDevice {
             port.Write("%");
             port.Write(sendData, 0, sendData.Length);
             port.BaseStream.Flush();
-        } catch (Exception) {
+        } catch (Exception e) {
+            Debug.LogException(e);
             Stop();
         }
     }

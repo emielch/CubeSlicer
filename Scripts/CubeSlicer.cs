@@ -134,7 +134,7 @@ public class CubeSlicer : MonoBehaviour {
             } else {
                 // Extract the color components from the output array
                 byte[] rtArray = request.GetData<byte>().ToArray();
-                Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray, device.cubeInfo.width, device.cubeInfo.height, device.cubeInfo.depth));
+                Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray));
                 fillLEDDataThread.Start();
             }
         });
@@ -142,7 +142,12 @@ public class CubeSlicer : MonoBehaviour {
         RenderTexture.ReleaseTemporary(renderTexture);
     }
 
-    void FillLEDData(byte[] rtArray, int w, int h, int d) {
+    void FillLEDData(byte[] rtArray) {
+        if (device == null) return;
+        int w = device.cubeInfo.width;
+        int h = device.cubeInfo.height;
+        int d = device.cubeInfo.depth;
+
         int id = 0;
         for (int z = 0; z < d; z++)
             for (int y = 0; y < h; y++)
