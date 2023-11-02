@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Profiling;
 using UnityEngine.Rendering;
+using UnityEngine.UIElements;
 
 public class CubeSlicer : MonoBehaviour {
     public int cubeID;
@@ -24,6 +25,9 @@ public class CubeSlicer : MonoBehaviour {
     public float sat = 1F;
     public float cubeScale;
     public Material rtMat;
+    public GameObject objects;
+    GameObject camObj;
+    Camera cam;
 
     void Start() {
         if (FindObjectOfType<CubesManager>() == null) {
@@ -54,6 +58,7 @@ public class CubeSlicer : MonoBehaviour {
     }
 
     public void Init(CubeDevice _device) {
+        Resources.UnloadUnusedAssets();
         foreach (var rig in camRigs) {
             Destroy(rig);
         }
@@ -91,7 +96,83 @@ public class CubeSlicer : MonoBehaviour {
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(0, 270, 0), depth, height, width));
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(90, 0, 0), width, depth, height));
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(270, 0, 0), width, depth, height));
+
+        int w = device.cubeInfo.width;
+        int h = device.cubeInfo.height;
+        int d = device.cubeInfo.depth;
+
+        camObj = new GameObject();
+        camObj.name = "Camera";
+        camObj.transform.SetParent(transform);
+        cam = camObj.AddComponent(typeof(Camera)) as Camera;
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.backgroundColor = new Color(0, 0, 0);
+        cam.orthographic = true;
+        cam.orthographicSize = 3 * cubeScale;
+        cam.nearClipPlane = 0;
+        cam.farClipPlane = (1F / d) * cubeScale;
+        cam.useOcclusionCulling = false;
+        cam.transform.localRotation = Quaternion.Euler(0, 0, 0);
+        cam.transform.localPosition = new Vector3(7.5f, 2.5f, -0.5f);
+        cam.targetTexture = rt;
+        //cam.rect = new Rect(0, 0, 1, 1);
+        camObj.SetActive(false);
+
+        //CopyMeshes();
     }
+
+
+    void CopyMeshes() {
+        Vector3 originalPosition = transform.position;
+
+        Vector3 originalScale = transform.lossyScale;
+
+        List<GameObject> meshCopies = new List<GameObject>();
+        MeshRenderer[] renderers = objects.GetComponentsInChildren<MeshRenderer>();
+        MeshFilter[] filters = objects.GetComponentsInChildren<MeshFilter>();
+
+        for (int i = 0; i < renderers.Length; i++) {
+            MeshRenderer renderer = renderers[i];
+            MeshFilter filter = filters[i];
+            CopyMeshesAngle(meshCopies, renderer, filter, Quaternion.Euler(0, 0, 0), 0);
+            CopyMeshesAngle(meshCopies, renderer, filter, Quaternion.Euler(0, 180, 0), cubeScale);
+            CopyMeshesAngle(meshCopies, renderer, filter, Quaternion.Euler(0, 270, 0), cubeScale * 2);
+            CopyMeshesAngle(meshCopies, renderer, filter, Quaternion.Euler(0, 90, 0), cubeScale * 3);
+            CopyMeshesAngle(meshCopies, renderer, filter, Quaternion.Euler(270, 0, 0), cubeScale * 4);
+            CopyMeshesAngle(meshCopies, renderer, filter, Quaternion.Euler(90, 0, 0), cubeScale * 5);
+        }
+
+        cam.Render();
+
+        foreach (var meshGO in meshCopies) {
+            DestroyImmediate(meshGO);
+        }
+        //
+
+    }
+
+    void CopyMeshesAngle(List<GameObject> meshCopies, MeshRenderer renderer, MeshFilter filter, Quaternion angle, float yShift) {
+        Quaternion originalRotation = transform.rotation;
+        transform.Rotate(angle.eulerAngles);
+        for (int i = 0; i < 16; i++) {
+
+            GameObject meshCopyGO = new GameObject();
+            meshCopies.Add(meshCopyGO);
+            meshCopyGO.name = "meshCopy" + i;
+            meshCopyGO.transform.position = filter.transform.position + new Vector3(cubeScale * i, yShift, -(1f / 16) * i * cubeScale);
+            meshCopyGO.transform.rotation = filter.transform.rotation;
+            meshCopyGO.transform.localScale = filter.transform.lossyScale;
+
+            MeshRenderer newRenderer = meshCopyGO.AddComponent<MeshRenderer>();
+            MeshFilter newFilter = meshCopyGO.AddComponent<MeshFilter>();
+
+            // Copy properties from the original components to the new components
+            newRenderer.sharedMaterial = renderer.sharedMaterial;
+            newFilter.sharedMesh = filter.sharedMesh;
+        }
+        transform.rotation = originalRotation;
+    }
+
 
     // Update is called once per frame
     void Update() {
@@ -107,12 +188,16 @@ public class CubeSlicer : MonoBehaviour {
             Init(device);
         }
 
-        RenderSettings.ambientSkyColor = new Color(0, 0, 0);
         edges.SetActive(false);
 
-        foreach (var rig in camRigs) {
-            rig.Render();
-        }
+        CopyMeshes();
+
+        //RenderSettings.ambientSkyColor = new Color(0, 0, 0);
+
+
+        //foreach (var rig in camRigs) {
+        //    rig.Render();
+        //}
 
         RenderSettings.ambientSkyColor = new Color(1, 1, 1);
         edges.SetActive(true);
