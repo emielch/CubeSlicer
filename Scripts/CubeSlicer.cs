@@ -22,8 +22,9 @@ public class CubeSlicer : MonoBehaviour {
     public Material edgesDisabledMat;
     public float bri = 0.1F;
     public float sat = 1F;
-    public float cubeScale;
+    float cubeScale;
     public Material rtMat;
+    private static List<CubeSlicer> instances = new List<CubeSlicer>();
 
     void Start() {
         if (FindObjectOfType<CubesManager>() == null) {
@@ -31,10 +32,29 @@ public class CubeSlicer : MonoBehaviour {
             cubesManagerGO.name = "CubesManager";
             cubesManagerGO.AddComponent<CubesManager>();
         }
-        updateEdges(edgesDisabledMat);
+        UpdateEdgesMat(edgesDisabledMat);
     }
 
-    void updateEdges(Material mat) {
+    private void OnEnable() {
+        instances.Add(this);
+    }
+    private void OnDisable() {
+        instances.Remove(this);
+    }
+
+    public static void EnableEdges() {
+        foreach (var instance in instances) {
+            instance.edges.SetActive(true);
+        }
+    }
+
+    public static void DisableEdges() {
+        foreach (var instance in instances) {
+            instance.edges.SetActive(false);
+        }
+    }
+
+    void UpdateEdgesMat(Material mat) {
         MeshRenderer[] mrs = edges.GetComponentsInChildren<MeshRenderer>();
         foreach (var mr in mrs) {
             mr.material = mat;
@@ -59,13 +79,13 @@ public class CubeSlicer : MonoBehaviour {
         }
         camRigs.Clear();
 
-        updateEdges(edgesEnabledMat);
+        UpdateEdgesMat(edgesEnabledMat);
         device = _device;
 
         cubeScale = transform.lossyScale.x;
         ledData = new byte[device.cubeInfo.width * device.cubeInfo.height * device.cubeInfo.depth * 3];
 
-        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientMode = AmbientMode.Flat;
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
 
         int width = device.cubeInfo.width;
@@ -97,7 +117,7 @@ public class CubeSlicer : MonoBehaviour {
     void Update() {
         if (device == null) return;
         if (device.Stopped() || device.cubeInfo.id != cubeID) {
-            updateEdges(edgesDisabledMat);
+            UpdateEdgesMat(edgesDisabledMat);
             device = null;
             return;
         }
@@ -108,37 +128,26 @@ public class CubeSlicer : MonoBehaviour {
         }
 
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
-        edges.SetActive(false);
+        DisableEdges();
 
         foreach (var rig in camRigs) {
             rig.Render();
         }
 
         RenderSettings.ambientSkyColor = new Color(1, 1, 1);
-        edges.SetActive(true);
-
-        //Texture2D texture2D = new Texture2D(rt.width, rt.height, TextureFormat.RGBA32, false);
-        //RenderTexture.active = rt;
-        //texture2D.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
-        //RenderTexture.active = null; // JC: added to avoid errors
-        //FillLEDData(texture2D.GetRawTextureData());
+        EnableEdges();
 
         var renderTexture = RenderTexture.GetTemporary(rt.width, rt.height, 24, RenderTextureFormat.ARGB32);
         Graphics.Blit(rt, renderTexture);
-        // Readback
-        // https://issuetracker.unity3d.com/issues/asyncgpureadback-dot-requestintonativearray-crashes-unity-when-trying-to-request-a-copy-to-the-same-nativearray-multiple-times
-        // https://issuetracker.unity3d.com/issues/asyncgpureadback-dot-requestintonativearray-causes-invalidoperationexception-on-nativearray
         AsyncGPUReadback.Request(renderTexture, 0, request => {
             if (request.hasError) {
                 Debug.Log("GPU readback error detected.");
             } else {
-                // Extract the color components from the output array
                 byte[] rtArray = request.GetData<byte>().ToArray();
                 Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray));
                 fillLEDDataThread.Start();
             }
         });
-        // Release
         RenderTexture.ReleaseTemporary(renderTexture);
     }
 
@@ -172,6 +181,6 @@ public class CubeSlicer : MonoBehaviour {
                     ledData[id++] = (b > 255.0f) ? (byte)255 : (byte)b;
                 }
 
-        device.Send(ledData);
+        device?.Send(ledData);
     }
 }

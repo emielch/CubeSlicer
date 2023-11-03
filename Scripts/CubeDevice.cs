@@ -13,28 +13,19 @@ public class CubeInfo {
     public int depth;
 }
 
+[Serializable]
 public class CubeDevice {
     Thread serialRceiveThread;
-    Thread serialSendThread;
     SerialPort port;
     public CubeInfo cubeInfo;
     public bool infoUpdated = false;
-    byte[] sendData;
     public bool Stopped() { return !port.IsOpen; }
 
     public void Init(string portName) {
         port = new SerialPort(portName, 9600);
-        StartReceiving();
-        port.Write("?");
 
-        //CubeInfo newInfo = ParseInfo(data);
-        //if (newInfo.id != -1) {
-        //    cubeInfo = newInfo;
-        //    Debug.Log("Cube found on port: " + portName + "\r\nID: " + cubeInfo.id + ", Width: " + cubeInfo.width + ", Height: " + cubeInfo.height + ", Depth: " + cubeInfo.depth);
-
-        //    return true;
-        //}
-        //return false;
+        serialRceiveThread = new Thread(ReceiveCubeData);
+        serialRceiveThread.Start();
     }
 
     CubeInfo ParseInfo(string info) {
@@ -51,40 +42,46 @@ public class CubeDevice {
     }
 
     public void Stop() {
+        infoUpdated = true;
         port.Close();
         serialRceiveThread.Abort();
     }
 
     public void Send(byte[] data) {
-        if (serialSendThread != null && serialSendThread.ThreadState == ThreadState.Running) {
-            serialSendThread.Join(500);
-            if (serialSendThread.ThreadState == ThreadState.Running) return;  // if the thread has still not ended, return
+        lock (port) {
+            try {
+                port.Write("%");
+                port.Write(data, 0, data.Length);
+                port.BaseStream.Flush();
+            } catch (Exception e) {
+                Debug.LogException(e);
+                Stop();
+            }
         }
-
-        sendData = data;
-        serialSendThread = new Thread(SendSerial);
-        serialSendThread.Start();
-    }
-    void SendSerial() {
-        try {
-            port.Write("%");
-            port.Write(sendData, 0, sendData.Length);
-            port.BaseStream.Flush();
-        } catch (Exception e) {
-            Debug.LogException(e);
-            Stop();
-        }
-    }
-
-    void StartReceiving() {
-        port.ReadTimeout = 30000;
-        port.Open();
-
-        serialRceiveThread = new Thread(ReceiveCubeData);
-        serialRceiveThread.Start();
     }
 
     void ReceiveCubeData() {
+        // try a couple of times to open the port (not immediately available for opening after inserting USB)
+        int tries = 10;
+        while (tries > 0) {
+            try {
+                port.ReadTimeout = 30000;
+                port.Open();
+                break;
+            } catch (Exception e) {
+                Debug.Log(e);
+                Thread.Sleep(100);
+            }
+            tries--;
+        }
+        if (!port.IsOpen) {
+            Stop();
+            return;
+        }
+
+
+        port.Write("?"); // request cube info
+
         while (true) {
             if (!port.IsOpen) {
                 return;

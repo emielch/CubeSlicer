@@ -26,7 +26,7 @@ public class CubesManager : MonoBehaviour {
         foreach (var cubeDevice in cubeDevices.Reverse<CubeDevice>()) {
             if (cubeDevice.infoUpdated) {
                 cubeDevice.infoUpdated = false;
-                if (cubeDevice.cubeInfo.id == -1) {
+                if (cubeDevice.Stopped() || cubeDevice.cubeInfo.id == -1) {
                     cubeDevices.Remove(cubeDevice);
                     continue;
                 }
