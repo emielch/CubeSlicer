@@ -6,7 +6,7 @@ using System.IO.Ports;
 using System.Threading;
 using UnityEngine;
 
-public class CubeInfo {
+public class DeviceInfo {
     public int id = -1;
     public int width;
     public int height;
@@ -14,12 +14,14 @@ public class CubeInfo {
 }
 
 [Serializable]
-public class CubeDevice {
+public class SerialDevice {
     Thread serialRceiveThread;
     SerialPort port;
-    public CubeInfo cubeInfo;
+    bool fakeDevice = false;
+    public DeviceInfo deviceInfo;
     public bool infoUpdated = false;
-    public bool Stopped() { return !port.IsOpen; }
+    public bool diff = true;
+    public bool Stopped() { return fakeDevice ? false : !port.IsOpen; }
 
     public void Init(string portName) {
         port = new SerialPort(portName, 9600);
@@ -28,11 +30,16 @@ public class CubeDevice {
         serialRceiveThread.Start();
     }
 
-    CubeInfo ParseInfo(string info) {
-        CubeInfo newInfo = null;
+    public void InitFake(DeviceInfo _info) {
+        deviceInfo = _info;
+        fakeDevice = true;
+    }
+
+    DeviceInfo ParseInfo(string info) {
+        DeviceInfo newInfo = null;
         string[] splitInfo = info.Split(',');
         if (splitInfo[0] == "CUBE") {
-            newInfo = new CubeInfo();
+            newInfo = new DeviceInfo();
             newInfo.id = int.Parse(splitInfo[1]);
             newInfo.width = int.Parse(splitInfo[2]);
             newInfo.height = int.Parse(splitInfo[3]);
@@ -48,6 +55,7 @@ public class CubeDevice {
     }
 
     public void Send(byte[] data) {
+        if (fakeDevice) return;
         lock (port) {
             try {
                 port.Write("%");
@@ -89,12 +97,16 @@ public class CubeDevice {
 
             try {
                 string data = port.ReadLine();
-                CubeInfo newInfo = ParseInfo(data);
-                Debug.Log(data);
-                if (cubeInfo == null || newInfo != null) {
-                    cubeInfo = newInfo;
-                    infoUpdated = true;
-                    Debug.Log("Cube found on port: " + port.PortName + "\r\nID: " + cubeInfo.id + ", Width: " + cubeInfo.width + ", Height: " + cubeInfo.height + ", Depth: " + cubeInfo.depth);
+                if (data.StartsWith("CUBE")) {
+                    DeviceInfo newInfo = ParseInfo(data);
+                    if (deviceInfo == null || newInfo != null) {
+                        deviceInfo = newInfo;
+                        infoUpdated = true;
+                        Debug.Log("Cube found on port: " + port.PortName + "\r\nID: " + deviceInfo.id + ", Width: " + deviceInfo.width + ", Height: " + deviceInfo.height + ", Depth: " + deviceInfo.depth);
+                    }
+                } else if (data.StartsWith("DIFF")) {
+                    string[] splitDiff = data.Split(',');
+                    diff = int.Parse(splitDiff[1]) == 1;
                 }
             } catch (TimeoutException) {
 

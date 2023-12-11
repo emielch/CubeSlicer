@@ -10,30 +10,46 @@ using System;
 
 public class CubesManager : MonoBehaviour {
     public string[] portNames = { };
-    public List<CubeDevice> cubeDevices;
+    public List<SerialDevice> serialDevices;
     public List<CubeSlicer> cubeSlicers;
+    public bool fakeCubes = false;
 
 
     void Start() {
-        cubeDevices = new List<CubeDevice>();
+        serialDevices = new List<SerialDevice>();
         cubeSlicers = FindObjectsOfType<CubeSlicer>().ToList();
+
+        if (fakeCubes) {
+            foreach (var cubeSlicer in cubeSlicers) {
+                SerialDevice newDevice = new SerialDevice();
+                DeviceInfo cubeInfo = new DeviceInfo();
+                cubeInfo.id = cubeSlicer.cubeID;
+                cubeInfo.width = 16;
+                cubeInfo.height = 16;
+                cubeInfo.depth = 16;
+                newDevice.InitFake(cubeInfo);
+                serialDevices.Add(newDevice);
+                cubeSlicer.Init(newDevice);
+            }
+        }
     }
 
     // Update is called once per frame
     void Update() {
+        if (fakeCubes) return;
         FindSerialPorts();
 
-        foreach (var cubeDevice in cubeDevices.Reverse<CubeDevice>()) {
-            if (cubeDevice.infoUpdated) {
-                cubeDevice.infoUpdated = false;
-                if (cubeDevice.Stopped() || cubeDevice.cubeInfo.id == -1) {
-                    cubeDevices.Remove(cubeDevice);
+        foreach (var serialDevice in serialDevices.Reverse<SerialDevice>()) {
+            if (serialDevice.infoUpdated) {
+                serialDevice.infoUpdated = false;
+                if (serialDevice.Stopped() || serialDevice.deviceInfo.id == -1) {
+                    serialDevices.Remove(serialDevice);
                     continue;
                 }
 
-                foreach (var cubeCam in cubeSlicers) {
-                    if (cubeCam.cubeID == cubeDevice.cubeInfo.id) {
-                        cubeCam.Init(cubeDevice);
+                foreach (var cubeSlicer in cubeSlicers) {
+                    if (cubeSlicer.cubeID == serialDevice.deviceInfo.id) {
+                        cubeSlicer.Init(serialDevice);
                         break;
                     }
                 }
@@ -48,16 +64,16 @@ public class CubesManager : MonoBehaviour {
 
         foreach (var portName in newPortNames) {
             if (portNames.Contains(portName)) continue;
-            CubeDevice newCube = new CubeDevice();
-            newCube.Init(portName);
-            cubeDevices.Add(newCube);
+            SerialDevice newDevice = new SerialDevice();
+            newDevice.Init(portName);
+            serialDevices.Add(newDevice);
         }
         portNames = newPortNames;
     }
 
     void OnApplicationQuit() {
-        foreach (var cubeDevice in cubeDevices) {
-            cubeDevice.Stop();
+        foreach (var serialDevice in serialDevices) {
+            serialDevice.Stop();
         }
     }
 

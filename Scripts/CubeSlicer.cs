@@ -13,7 +13,7 @@ using UnityEngine.Rendering;
 
 public class CubeSlicer : MonoBehaviour {
     public int cubeID;
-    CubeDevice device;
+    SerialDevice device;
     public RenderTexture rt;
     byte[] ledData;
     public List<CubeCamRig> camRigs = new List<CubeCamRig>();
@@ -23,16 +23,20 @@ public class CubeSlicer : MonoBehaviour {
     public float bri = 0.1F;
     public float sat = 1F;
     float cubeScale;
-    public Material rtMat;
+    public MeshRenderer previewPlane;
     private static List<CubeSlicer> instances = new List<CubeSlicer>();
 
-    void Start() {
+    public int nextRender = 1;
+    public int renderCountReset = 2;
+
+    void Awake() {
         if (FindObjectOfType<CubesManager>() == null) {
             GameObject cubesManagerGO = new GameObject();
             cubesManagerGO.name = "CubesManager";
             cubesManagerGO.AddComponent<CubesManager>();
         }
         UpdateEdgesMat(edgesDisabledMat);
+        nextRender = (int)UnityEngine.Random.Range(1, 20);
     }
 
     private void OnEnable() {
@@ -73,7 +77,7 @@ public class CubeSlicer : MonoBehaviour {
         return rig;
     }
 
-    public void Init(CubeDevice _device) {
+    public void Init(SerialDevice _device) {
         foreach (var rig in camRigs) {
             Destroy(rig);
         }
@@ -83,14 +87,14 @@ public class CubeSlicer : MonoBehaviour {
         device = _device;
 
         cubeScale = transform.lossyScale.x;
-        ledData = new byte[device.cubeInfo.width * device.cubeInfo.height * device.cubeInfo.depth * 3];
+        ledData = new byte[device.deviceInfo.width * device.deviceInfo.height * device.deviceInfo.depth * 3];
 
         RenderSettings.ambientMode = AmbientMode.Flat;
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
 
-        int width = device.cubeInfo.width;
-        int height = device.cubeInfo.height;
-        int depth = device.cubeInfo.depth;
+        int width = device.deviceInfo.width;
+        int height = device.deviceInfo.height;
+        int depth = device.deviceInfo.depth;
 
         int xSize = width * depth;
         int ySize = height * 4;
@@ -98,8 +102,13 @@ public class CubeSlicer : MonoBehaviour {
 
         rt = new RenderTexture(xSize, ySize, 24);
 
-        if (rtMat != null)
-            rtMat.SetTexture("_EmissionMap", rt);
+        if (previewPlane != null) {
+            previewPlane.material = new Material(Shader.Find("Standard"));
+            previewPlane.material.SetColor("_Color", Color.black);
+            previewPlane.material.SetColor("_EmissionColor", Color.white);
+            previewPlane.material.EnableKeyword("_EMISSION");
+            previewPlane.material.SetTexture("_EmissionMap", rt);
+        }
 
         int xpos = 0;
         int ypos = 0;
@@ -116,7 +125,7 @@ public class CubeSlicer : MonoBehaviour {
     // Update is called once per frame
     void Update() {
         if (device == null) return;
-        if (device.Stopped() || device.cubeInfo.id != cubeID) {
+        if (device.Stopped() || device.deviceInfo.id != cubeID) {
             UpdateEdgesMat(edgesDisabledMat);
             device = null;
             return;
@@ -126,6 +135,14 @@ public class CubeSlicer : MonoBehaviour {
             cubeScale = transform.lossyScale.x;
             Init(device);
         }
+
+        if (device.diff) renderCountReset = 1;
+
+        nextRender--;
+        if (nextRender > 0) return;
+        renderCountReset = Math.Min(renderCountReset + 1, 10);
+        if (device.diff) renderCountReset = 1;
+        nextRender = renderCountReset;
 
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
         DisableEdges();
@@ -153,9 +170,9 @@ public class CubeSlicer : MonoBehaviour {
 
     void FillLEDData(byte[] rtArray) {
         if (device == null) return;
-        int w = device.cubeInfo.width;
-        int h = device.cubeInfo.height;
-        int d = device.cubeInfo.depth;
+        int w = device.deviceInfo.width;
+        int h = device.deviceInfo.height;
+        int d = device.deviceInfo.depth;
 
         int id = 0;
         for (int z = 0; z < d; z++)
