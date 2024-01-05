@@ -24,7 +24,7 @@ public class SerialDevice {
     public bool Stopped() { return fakeDevice ? false : !port.IsOpen; }
 
     public void Init(string portName) {
-        port = new SerialPort(portName, 9600);
+        port = new SerialPort(portName);
 
         serialRceiveThread = new Thread(ReceiveCubeData);
         serialRceiveThread.Start();
@@ -54,12 +54,33 @@ public class SerialDevice {
         serialRceiveThread.Abort();
     }
 
-    public void Send(byte[] data) {
+    public void SendFrame(byte[] data) {
         if (fakeDevice) return;
+
         lock (port) {
             try {
                 port.Write("%");
                 port.Write(data, 0, data.Length);
+                port.BaseStream.Flush();
+            } catch (Exception e) {
+                Debug.LogException(e);
+                Stop();
+            }
+        }
+    }
+
+    public void SendAudio(short[] data) {
+        if (fakeDevice) return;
+        byte[] byteArray = new byte[data.Length * 2]; // 2 bytes per short
+        for (int i = 0; i < data.Length; i++) {
+            byte[] tempBytes = BitConverter.GetBytes(data[i]);
+            Array.Copy(tempBytes, 0, byteArray, i * 2, tempBytes.Length);
+        }
+
+        lock (port) {
+            try {
+                port.Write("$");
+                port.Write(byteArray, 0, byteArray.Length);
                 port.BaseStream.Flush();
             } catch (Exception e) {
                 Debug.LogException(e);
@@ -107,6 +128,8 @@ public class SerialDevice {
                 } else if (data.StartsWith("DIFF")) {
                     string[] splitDiff = data.Split(',');
                     diff = int.Parse(splitDiff[1]) == 1;
+                } else {
+                    Debug.Log(data);
                 }
             } catch (TimeoutException) {
 

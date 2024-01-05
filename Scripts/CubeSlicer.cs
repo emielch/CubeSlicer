@@ -1,5 +1,7 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -22,6 +24,15 @@ public class CubeSlicer : MonoBehaviour {
     public int nextRender = 1;
     public int renderCountReset = 2;
 
+    public List<OKAudioSource> audioSources = new List<OKAudioSource>();
+    float[] samples = new float[44100];
+    [Range(0.0f, 30000)]
+    public float vol = 1000;
+
+    int samplesInBlock = 128;
+    short[] audioData;
+    int aDataIdx = 0;
+
     void Awake() {
         if (FindObjectOfType<CubesManager>() == null) {
             GameObject cubesManagerGO = new GameObject();
@@ -30,6 +41,8 @@ public class CubeSlicer : MonoBehaviour {
         }
         UpdateEdgesMat(edgesDisabledMat);
         nextRender = (int)UnityEngine.Random.Range(1, 20);
+
+        audioSources = FindObjectsOfType<OKAudioSource>().ToList();
     }
 
     private void OnEnable() {
@@ -81,6 +94,7 @@ public class CubeSlicer : MonoBehaviour {
 
         cubeScale = transform.lossyScale.x;
         ledData = new byte[device.deviceInfo.width * device.deviceInfo.height * device.deviceInfo.depth * 3];
+        audioData = new short[samplesInBlock];
 
         RenderSettings.ambientMode = AmbientMode.Flat;
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
@@ -124,6 +138,8 @@ public class CubeSlicer : MonoBehaviour {
             return;
         }
 
+        GenerateAudioData();
+
         if (cubeScale != transform.lossyScale.x) {
             cubeScale = transform.lossyScale.x;
             Init(device);
@@ -161,6 +177,23 @@ public class CubeSlicer : MonoBehaviour {
         RenderTexture.ReleaseTemporary(renderTexture);
     }
 
+    void GenerateAudioData() {
+        Array.Fill(samples, 0f);
+        foreach (var asource in audioSources) {
+            for (int i = 0; i < OKAudioManager.frameLen; i++) {
+                samples[i] += asource.GetSample(i)* vol;
+            }
+        }
+
+        for (int i = 0; i < OKAudioManager.frameLen; i++) {
+            audioData[aDataIdx++] = (short)samples[i];
+            if (aDataIdx >= samplesInBlock) {
+                aDataIdx = 0;
+                device?.SendAudio(audioData);
+            }
+        }
+    }
+
     void FillLEDData(byte[] rtArray) {
         if (device == null) return;
         int w = device.deviceInfo.width;
@@ -191,6 +224,6 @@ public class CubeSlicer : MonoBehaviour {
                     ledData[id++] = (b > 255.0f) ? (byte)255 : (byte)b;
                 }
 
-        device?.Send(ledData);
+        device?.SendFrame(ledData);
     }
 }
