@@ -21,6 +21,7 @@ public class SerialDevice {
     public DeviceInfo deviceInfo;
     public bool infoUpdated = false;
     public bool diff = true;
+    public float audioQueueLevel = 0;
     public bool Stopped() { return fakeDevice ? false : !port.IsOpen; }
 
     public void Init(string portName) {
@@ -128,6 +129,9 @@ public class SerialDevice {
                 } else if (data.StartsWith("DIFF")) {
                     string[] splitDiff = data.Split(',');
                     diff = int.Parse(splitDiff[1]) == 1;
+                } else if (data.StartsWith("AQ")) {
+                    string[] splitDiff = data.Split(',');
+                    audioQueueLevel = float.Parse(splitDiff[1]);
                 } else {
                     Debug.Log(data);
                 }

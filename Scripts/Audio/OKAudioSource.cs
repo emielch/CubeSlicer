@@ -6,6 +6,8 @@ using UnityEngine;
 [DefaultExecutionOrder(-1)]
 public class OKAudioSource : MonoBehaviour {
     public AudioClip audioClip;
+    [Range(0, 10)]
+    public float range = 1;
     List<float[]> samples;
     [Range(0, 1)]
     public double playFac = 0;
@@ -17,6 +19,11 @@ public class OKAudioSource : MonoBehaviour {
     public float[] channelVols;
 
     int playHead = 0;
+
+    public bool insertSine = false;
+    public float sineFreq = 500f;
+    float sineStep = 0.05f;
+    float sinePhs = 0;
 
     void Awake() {
         if (FindObjectOfType<OKAudioManager>() == null) {
@@ -52,23 +59,29 @@ public class OKAudioSource : MonoBehaviour {
 
     void Update() {
         if (!play) return;
-        playFac += (double)OKAudioManager.frameLen / audioClip.samples;
+        playFac += (double)OKAudioManager.GetFL() / audioClip.samples;
         playHead = (int)(playFac * audioClip.samples);
         if (playHead >= audioClip.samples) {
-            playFac = (double)OKAudioManager.frameLen / audioClip.samples;
+            playFac = (double)OKAudioManager.GetFL() / audioClip.samples;
             playHead = (int)(playFac * audioClip.samples);
             if (!loop) play = false;
         }
+
+        if (!insertSine) return;
+        sineStep = sineFreq / OKAudioManager.instance.sampleRate * Mathf.PI * 2;
+        sinePhs += sineStep * OKAudioManager.GetPrevFL();
+        sinePhs %= Mathf.PI * 2;
     }
 
     public float GetSample(int id) {
-        if (play) {
-            float sample = 0;
-            for (int i = 0; i < samples.Count; i++) {
-                sample += samples[i][playHead - OKAudioManager.frameLen + id] * channelVols[i] * vol;
-            }
-            return sample;
+        if (!play) return 0;
+        if (insertSine) return MathF.Sin((float)(sinePhs + id * sineStep)) * vol * 0.1f;
+
+        float sample = 0;
+        for (int i = 0; i < samples.Count; i++) {
+            sample += samples[i][playHead - OKAudioManager.GetFL() + id] * channelVols[i] * vol;
         }
-        return 0;
+        return sample;
     }
+
 }

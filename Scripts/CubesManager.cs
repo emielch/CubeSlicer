@@ -12,12 +12,14 @@ public class CubesManager : MonoBehaviour {
     public string[] portNames = { };
     public List<SerialDevice> serialDevices;
     public List<CubeSlicer> cubeSlicers;
+    public List<OKAudioListener> audioListeners;
     public bool fakeCubes = false;
 
 
     void Start() {
         serialDevices = new List<SerialDevice>();
         cubeSlicers = FindObjectsOfType<CubeSlicer>().ToList();
+        audioListeners = FindObjectsOfType<OKAudioListener>().ToList();
 
         if (fakeCubes) {
             foreach (var cubeSlicer in cubeSlicers) {
@@ -50,7 +52,12 @@ public class CubesManager : MonoBehaviour {
                 foreach (var cubeSlicer in cubeSlicers) {
                     if (cubeSlicer.cubeID == serialDevice.deviceInfo.id) {
                         cubeSlicer.Init(serialDevice);
-                        break;
+                    }
+                }
+
+                foreach (var audioListener in audioListeners) {
+                    if (audioListener.cubeID == serialDevice.deviceInfo.id) {
+                        audioListener.Init(serialDevice);
                     }
                 }
             }
