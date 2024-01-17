@@ -20,7 +20,6 @@ public class SerialDevice {
     bool fakeDevice = false;
     public DeviceInfo deviceInfo;
     public bool infoUpdated = false;
-    public bool diff = true;
     public float audioQueueLevel = 0;
     public bool Stopped() { return fakeDevice ? false : !port.IsOpen; }
 
@@ -90,6 +89,21 @@ public class SerialDevice {
         }
     }
 
+    public void SendBri(float bri) {
+        if (fakeDevice) return;
+        string formattedString = $"{bri:F1}".PadLeft(5);
+        lock (port) {
+            try {
+                port.Write("b");
+                port.Write(formattedString);
+                port.BaseStream.Flush();
+            } catch (Exception e) {
+                Debug.LogException(e);
+                Stop();
+            }
+        }
+    }
+
     void ReceiveCubeData() {
         // try a couple of times to open the port (not immediately available for opening after inserting USB)
         int tries = 10;
@@ -126,9 +140,6 @@ public class SerialDevice {
                         infoUpdated = true;
                         Debug.Log("Cube found on port: " + port.PortName + "\r\nID: " + deviceInfo.id + ", Width: " + deviceInfo.width + ", Height: " + deviceInfo.height + ", Depth: " + deviceInfo.depth);
                     }
-                } else if (data.StartsWith("DIFF")) {
-                    string[] splitDiff = data.Split(',');
-                    diff = int.Parse(splitDiff[1]) == 1;
                 } else if (data.StartsWith("AQ")) {
                     string[] splitDiff = data.Split(',');
                     audioQueueLevel = float.Parse(splitDiff[1]);

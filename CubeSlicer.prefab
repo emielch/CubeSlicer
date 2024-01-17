@@ -865,9 +865,12 @@ MonoBehaviour:
   edges: {fileID: 3953608472407960762}
   edgesEnabledMat: {fileID: 2100000, guid: 1fb617fcf1c5d64478d6851c91361f8e, type: 2}
   edgesDisabledMat: {fileID: 2100000, guid: 2a8f5ee807c379940a64c4673a9721f7, type: 2}
-  bri: 0.25
+  bri: 25
   sat: 1.8
   previewPlane: {fileID: 1001116462573039350}
+  nextRender: 1
+  renderCountReset: 2
+  makeListener: 1
 --- !u!1 &8123554454951926567
 GameObject:
   m_ObjectHideFlags: 0

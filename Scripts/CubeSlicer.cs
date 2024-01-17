@@ -3,17 +3,23 @@ using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Linq;
 
 public class CubeSlicer : MonoBehaviour {
     public int cubeID;
     SerialDevice device;
     public RenderTexture rt;
     byte[] ledData;
+    byte[] ledData1;
+    byte[] ledData2;
     public List<CubeCamRig> camRigs = new List<CubeCamRig>();
     public GameObject edges;
     public Material edgesEnabledMat;
     public Material edgesDisabledMat;
-    public float bri = 0.1F;
+    [Range(0, 100)]
+    public float bri = 100;
+    float prevBri = 100;
+    [Range(0, 3)]
     public float sat = 1F;
     float cubeScale;
     public MeshRenderer previewPlane;
@@ -88,7 +94,9 @@ public class CubeSlicer : MonoBehaviour {
         device = _device;
 
         cubeScale = transform.lossyScale.x;
-        ledData = new byte[device.deviceInfo.width * device.deviceInfo.height * device.deviceInfo.depth * 3];
+        ledData1 = new byte[device.deviceInfo.width * device.deviceInfo.height * device.deviceInfo.depth * 3];
+        ledData2 = new byte[device.deviceInfo.width * device.deviceInfo.height * device.deviceInfo.depth * 3];
+        ledData = ledData1;
 
         RenderSettings.ambientMode = AmbientMode.Flat;
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
@@ -121,6 +129,8 @@ public class CubeSlicer : MonoBehaviour {
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(0, 270, 0), depth, height, width));
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(90, 0, 0), width, depth, height));
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(270, 0, 0), width, depth, height));
+
+        device.SendBri(bri);
     }
 
     // Update is called once per frame
@@ -132,17 +142,19 @@ public class CubeSlicer : MonoBehaviour {
             return;
         }
 
+        if(bri!=prevBri) {
+            prevBri = bri;
+            device.SendBri(bri);
+        }
+
         if (cubeScale != transform.lossyScale.x) {
             cubeScale = transform.lossyScale.x;
             Init(device);
         }
 
-        if (device.diff) renderCountReset = 1;
-
         nextRender--;
         if (nextRender > 0) return;
         renderCountReset = Math.Min(renderCountReset + 1, 10);
-        if (device.diff) renderCountReset = 1;
         nextRender = renderCountReset;
 
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
@@ -190,9 +202,9 @@ public class CubeSlicer : MonoBehaviour {
                     Color.RGBToHSV(pix, out float H, out float S, out float V);
                     pix = Color.HSVToRGB(H, Mathf.Min(1, S * sat), V);
 
-                    float r = pix.r * 255 * bri;
-                    float g = pix.g * 255 * bri;
-                    float b = pix.b * 255 * bri;
+                    float r = pix.r * 255;
+                    float g = pix.g * 255;
+                    float b = pix.b * 255;
 
                     ledData[id++] = (r > 255.0f) ? (byte)255 : (byte)r;
                     ledData[id++] = (g > 255.0f) ? (byte)255 : (byte)g;
@@ -200,5 +212,12 @@ public class CubeSlicer : MonoBehaviour {
                 }
 
         device?.SendFrame(ledData);
+        bool areEqual = ledData1.SequenceEqual(ledData2);
+        if (!areEqual) {
+            renderCountReset = 0;
+            nextRender = 0;
+        }
+        if (ledData == ledData1) ledData = ledData2;
+        else ledData = ledData1;
     }
 }
