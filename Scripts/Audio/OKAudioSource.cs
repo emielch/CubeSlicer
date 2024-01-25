@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[DefaultExecutionOrder(-1)]
+[DefaultExecutionOrder(-2)]
 public class OKAudioSource : MonoBehaviour {
     public AudioClip audioClip;
     [Range(0, 10)]
@@ -25,6 +25,8 @@ public class OKAudioSource : MonoBehaviour {
     public float sineFreq = 500f;
     float sineStep = 0.05f;
     float sinePhs = 0;
+
+    public Vector3 currPos;
 
     void Awake() {
         OKAudioManager.SetupInstance();
@@ -55,6 +57,7 @@ public class OKAudioSource : MonoBehaviour {
     }
 
     void Update() {
+        currPos = transform.position;
         if (play) {
             playFac += (double)OKAudioManager.GetFL() / audioClip.samples;
             playHead = (int)(playFac * audioClip.samples);

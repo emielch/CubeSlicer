@@ -861,11 +861,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cubeID: 1
   rt: {fileID: 0}
+  rigEnabled: 010000000100
   camRigs: []
   edges: {fileID: 3953608472407960762}
   edgesEnabledMat: {fileID: 2100000, guid: 1fb617fcf1c5d64478d6851c91361f8e, type: 2}
   edgesDisabledMat: {fileID: 2100000, guid: 2a8f5ee807c379940a64c4673a9721f7, type: 2}
-  bri: 25
+  bri: 100
   sat: 1.8
   previewPlane: {fileID: 1001116462573039350}
   nextRender: 1

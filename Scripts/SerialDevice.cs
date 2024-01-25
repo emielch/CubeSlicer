@@ -22,6 +22,7 @@ public class SerialDevice {
     public bool infoUpdated = false;
     public float audioQueueLevel = 0;
     public bool Stopped() { return fakeDevice ? false : !port.IsOpen; }
+    byte[] audioByteArray = new byte[1];
 
     public void Init(string portName) {
         port = new SerialPort(portName);
@@ -71,16 +72,17 @@ public class SerialDevice {
 
     public void SendAudio(short[] data) {
         if (fakeDevice) return;
-        byte[] byteArray = new byte[data.Length * 2]; // 2 bytes per short
+        if (audioByteArray.Length < data.Length * 2)
+            audioByteArray = new byte[data.Length * 2]; // 2 bytes per short
         for (int i = 0; i < data.Length; i++) {
             byte[] tempBytes = BitConverter.GetBytes(data[i]);
-            Array.Copy(tempBytes, 0, byteArray, i * 2, tempBytes.Length);
+            Array.Copy(tempBytes, 0, audioByteArray, i * 2, tempBytes.Length);
         }
 
         lock (port) {
             try {
                 port.Write("$");
-                port.Write(byteArray, 0, byteArray.Length);
+                port.Write(audioByteArray, 0, data.Length * 2);
                 port.BaseStream.Flush();
             } catch (Exception e) {
                 Debug.LogException(e);

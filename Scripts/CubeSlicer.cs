@@ -12,6 +12,7 @@ public class CubeSlicer : MonoBehaviour {
     byte[] ledData;
     byte[] ledData1;
     byte[] ledData2;
+    public bool[] rigEnabled = new bool[6];
     public List<CubeCamRig> camRigs = new List<CubeCamRig>();
     public GameObject edges;
     public Material edgesEnabledMat;
@@ -44,6 +45,8 @@ public class CubeSlicer : MonoBehaviour {
             OKAudioListener listener = gameObject.AddComponent<OKAudioListener>();
             listener.cubeID = cubeID;
         }
+
+        if (rigEnabled.Length != 6) rigEnabled = new bool[6];
     }
 
     private void OnEnable() {
@@ -142,7 +145,7 @@ public class CubeSlicer : MonoBehaviour {
             return;
         }
 
-        if(bri!=prevBri) {
+        if (bri != prevBri) {
             prevBri = bri;
             device.SendBri(bri);
         }
@@ -160,8 +163,8 @@ public class CubeSlicer : MonoBehaviour {
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
         DisableEdges();
 
-        foreach (var rig in camRigs) {
-            rig.Render();
+        for (int i = 0; i < camRigs.Count; i++) {
+            if (rigEnabled[i]) camRigs[i].Render();
         }
 
         RenderSettings.ambientSkyColor = new Color(1, 1, 1);
@@ -192,12 +195,12 @@ public class CubeSlicer : MonoBehaviour {
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++) {
                     Color pix = new();
-                    pix += camRigs[0].GetPixel(rtArray, x, y, z);
-                    pix += camRigs[1].GetPixel(rtArray, w - 1 - x, y, d - 1 - z);
-                    pix += camRigs[2].GetPixel(rtArray, d - 1 - z, y, x);
-                    pix += camRigs[3].GetPixel(rtArray, z, y, w - 1 - x);
-                    pix += camRigs[4].GetPixel(rtArray, x, z, h - 1 - y);
-                    pix += camRigs[5].GetPixel(rtArray, x, d - 1 - z, y);
+                    if (rigEnabled[0]) pix += camRigs[0].GetPixel(rtArray, x, y, z);
+                    if (rigEnabled[1]) pix += camRigs[1].GetPixel(rtArray, w - 1 - x, y, d - 1 - z);
+                    if (rigEnabled[2]) pix += camRigs[2].GetPixel(rtArray, d - 1 - z, y, x);
+                    if (rigEnabled[3]) pix += camRigs[3].GetPixel(rtArray, z, y, w - 1 - x);
+                    if (rigEnabled[4]) pix += camRigs[4].GetPixel(rtArray, x, z, h - 1 - y);
+                    if (rigEnabled[5]) pix += camRigs[5].GetPixel(rtArray, x, d - 1 - z, y);
 
                     Color.RGBToHSV(pix, out float H, out float S, out float V);
                     pix = Color.HSVToRGB(H, Mathf.Min(1, S * sat), V);

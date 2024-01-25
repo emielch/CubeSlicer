@@ -2,8 +2,10 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using UnityEngine;
 
+[DefaultExecutionOrder(-1)]
 public class OKAudioListener : MonoBehaviour {
     public int cubeID;
     SerialDevice device;
@@ -25,7 +27,9 @@ public class OKAudioListener : MonoBehaviour {
     public float inputIndex = 0;
     int samplesLen = 1;
 
-    private void Awake(){
+    Vector3 currPos;
+
+    private void Awake() {
         OKAudioManager.SetupInstance();
     }
 
@@ -45,6 +49,13 @@ public class OKAudioListener : MonoBehaviour {
             return;
         }
 
+        currPos = transform.position;
+
+        Thread processAudioThread = new Thread(() => ProcessAudio());
+        processAudioThread.Start();
+    }
+
+    void ProcessAudio() {
         currentQueueFill = device.audioQueueLevel;
         float queueFillDifference = currentQueueFill - targetQueueFill;
         newSampleRate = OKAudioManager.instance.sampleRate - (queueFillDifference * adjustmentSpeed);
@@ -62,9 +73,9 @@ public class OKAudioListener : MonoBehaviour {
         }
 
         foreach (var asource in audioSources) {
+            float dist = Vector3.Distance(asource.currPos, currPos);
+            float distVol = Mathf.Min(1, asource.range / dist);
             for (int i = startCount; i < samplesLen; i++) {
-                float dist = Vector3.Distance(asource.transform.position, transform.position);
-                float distVol = Mathf.Min(1, asource.range / dist);
                 samples[i] += asource.GetSample(i) * vol * distVol;
             }
         }
