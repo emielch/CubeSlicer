@@ -26,11 +26,7 @@ public class OKAudioSource : MonoBehaviour {
     float sinePhs = 0;
 
     void Awake() {
-        if (FindObjectOfType<OKAudioManager>() == null) {
-            GameObject audioManagerGO = new GameObject();
-            audioManagerGO.name = "OKAudioManager";
-            audioManagerGO.AddComponent<OKAudioManager>();
-        }
+        OKAudioManager.SetupInstance();
     }
 
     void Start() {

@@ -26,6 +26,15 @@ public class OKAudioManager : MonoBehaviour {
         frameLen = Math.Min((int)(sampleRate * Time.deltaTime), (int)sampleRate / 4);
     }
 
+    static public void SetupInstance(){
+        if (FindObjectOfType<OKAudioManager>() == null)
+        {
+            GameObject audioManagerGO = new GameObject();
+            audioManagerGO.name = "OKAudioManager";
+            audioManagerGO.AddComponent<OKAudioManager>();
+        }
+    }
+
     static public int GetFL() { return instance.frameLen; }
     static public int GetPrevFL() { return instance.prevFrameLen; }
 

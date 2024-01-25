@@ -25,6 +25,10 @@ public class OKAudioListener : MonoBehaviour {
     public float inputIndex = 0;
     int samplesLen = 1;
 
+    private void Awake(){
+        OKAudioManager.SetupInstance();
+    }
+
     void Start() {
         audioSources = FindObjectsOfType<OKAudioSource>().ToList();
         audioData = new short[samplesInBlock];
