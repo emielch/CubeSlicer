@@ -20,6 +20,7 @@ public class OKAudioSource : MonoBehaviour {
 
     int playHead = 0;
 
+    public bool insertNoise = false;
     public bool insertSine = false;
     public float sineFreq = 500f;
     float sineStep = 0.05f;
@@ -54,29 +55,33 @@ public class OKAudioSource : MonoBehaviour {
     }
 
     void Update() {
-        if (!play) return;
-        playFac += (double)OKAudioManager.GetFL() / audioClip.samples;
-        playHead = (int)(playFac * audioClip.samples);
-        if (playHead >= audioClip.samples) {
-            playFac = (double)OKAudioManager.GetFL() / audioClip.samples;
+        if (play) {
+            playFac += (double)OKAudioManager.GetFL() / audioClip.samples;
             playHead = (int)(playFac * audioClip.samples);
-            if (!loop) play = false;
+            if (playHead >= audioClip.samples) {
+                playFac = (double)OKAudioManager.GetFL() / audioClip.samples;
+                playHead = (int)(playFac * audioClip.samples);
+                if (!loop) play = false;
+            }
         }
 
-        if (!insertSine) return;
-        sineStep = sineFreq / OKAudioManager.instance.sampleRate * Mathf.PI * 2;
-        sinePhs += sineStep * OKAudioManager.GetPrevFL();
-        sinePhs %= Mathf.PI * 2;
+        if (insertSine) {
+            sineStep = sineFreq / OKAudioManager.instance.sampleRate * Mathf.PI * 2;
+            sinePhs += sineStep * OKAudioManager.GetPrevFL();
+            sinePhs %= Mathf.PI * 2;
+        }
     }
 
     public float GetSample(int id) {
-        if (!play) return 0;
-        if (insertSine) return MathF.Sin((float)(sinePhs + id * sineStep)) * vol * 0.1f;
-
         float sample = 0;
-        for (int i = 0; i < samples.Count; i++) {
-            sample += samples[i][playHead - OKAudioManager.GetFL() + id] * channelVols[i] * vol;
-        }
+
+        if (insertNoise) sample += UnityEngine.Random.Range(-1f, 1f) * vol * 0.1f;
+        if (insertSine) sample += MathF.Sin((float)(sinePhs + id * sineStep)) * vol * 0.1f;
+
+        if (play)
+            for (int i = 0; i < samples.Count; i++) {
+                sample += samples[i][playHead - OKAudioManager.GetFL() + id] * channelVols[i] * vol;
+            }
         return sample;
     }
 
