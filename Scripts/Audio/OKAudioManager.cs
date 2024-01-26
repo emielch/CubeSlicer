@@ -3,17 +3,18 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 [DefaultExecutionOrder(-3)]
 public class OKAudioManager : MonoBehaviour {
     public static OKAudioManager instance;
 
-    [Range(0, 1)]
-    public float masterVol = 1;
+    public float masterVol { get; private set; }
     int prevFrameLen = 0;
     int frameLen = 0;
     public float sampleRate = 44100;
     public List<OKAudioSource> audioSources;
+    public Slider volSlider;
 
     private void Awake() {
         // If there is an instance, and it's not me, delete myself.
@@ -22,12 +23,21 @@ public class OKAudioManager : MonoBehaviour {
         } else {
             instance = this;
         }
+
+        if (volSlider) {
+            SetVolume(volSlider.value);
+            volSlider.onValueChanged.AddListener(SetVolume);
+        }
     }
 
     void Update() {
         prevFrameLen = frameLen;
         frameLen = Math.Min((int)(sampleRate * Time.deltaTime), (int)sampleRate / 4);
         audioSources = FindObjectsOfType<OKAudioSource>().ToList();
+    }
+
+    public void SetVolume(float _vol) {
+        masterVol = MathF.Pow(_vol, 3f);
     }
 
     static public void SetupInstance() {

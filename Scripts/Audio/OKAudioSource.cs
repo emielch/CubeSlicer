@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 [DefaultExecutionOrder(-2)]
 public class OKAudioSource : MonoBehaviour {
@@ -31,6 +32,8 @@ public class OKAudioSource : MonoBehaviour {
 
     bool removeWhenFinished = false;
 
+    public Slider volSlider;
+
     void Awake() {
         OKAudioManager.SetupInstance();
     }
@@ -57,6 +60,11 @@ public class OKAudioSource : MonoBehaviour {
 
         channelVols = new float[channelCount];
         Array.Fill(channelVols, 1);
+
+        if (volSlider) {
+            SetVolume(volSlider.value);
+            volSlider.onValueChanged.AddListener(SetVolume);
+        }
     }
 
     void Update() {
@@ -77,6 +85,9 @@ public class OKAudioSource : MonoBehaviour {
             sinePhs += sineStep * OKAudioManager.GetPrevFL();
             sinePhs %= Mathf.PI * 2;
         }
+    }
+    public void SetVolume(float _vol) {
+        vol = MathF.Pow(_vol, 3f);
     }
 
     public void PlayOneShot(AudioClip _clip, float _vol) {
