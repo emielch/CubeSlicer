@@ -6,6 +6,7 @@ using UnityEngine;
 [DefaultExecutionOrder(-2)]
 public class OKAudioSource : MonoBehaviour {
     public AudioClip audioClip;
+    public bool isSpatial = true;
     [Range(0, 10)]
     public float range = 1;
     List<float[]> samples;
@@ -26,7 +27,9 @@ public class OKAudioSource : MonoBehaviour {
     float sineStep = 0.05f;
     float sinePhs = 0;
 
-    public Vector3 currPos;
+    public Vector3 currPos { get; private set; }
+
+    bool removeWhenFinished = false;
 
     void Awake() {
         OKAudioManager.SetupInstance();
@@ -65,6 +68,7 @@ public class OKAudioSource : MonoBehaviour {
                 playFac = (double)OKAudioManager.GetFL() / audioClip.samples;
                 playHead = (int)(playFac * audioClip.samples);
                 if (!loop) play = false;
+                if (removeWhenFinished) Destroy(this);
             }
         }
 
@@ -73,6 +77,17 @@ public class OKAudioSource : MonoBehaviour {
             sinePhs += sineStep * OKAudioManager.GetPrevFL();
             sinePhs %= Mathf.PI * 2;
         }
+    }
+
+    public void PlayOneShot(AudioClip _clip, float _vol) {
+        audioClip = _clip;
+        vol = _vol;
+        removeWhenFinished = true;
+        play = true;
+    }
+
+    public bool HasSamples() {
+        return insertNoise || insertSine || play;
     }
 
     public float GetSample(int id) {

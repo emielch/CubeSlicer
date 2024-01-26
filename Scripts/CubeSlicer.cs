@@ -26,6 +26,7 @@ public class CubeSlicer : MonoBehaviour {
     public MeshRenderer previewPlane;
     private static List<CubeSlicer> instances = new List<CubeSlicer>();
 
+    public bool autoFrameSkipper = true;
     public int nextRender = 1;
     public int renderCountReset = 2;
 
@@ -155,10 +156,12 @@ public class CubeSlicer : MonoBehaviour {
             Init(device);
         }
 
-        nextRender--;
-        if (nextRender > 0) return;
-        renderCountReset = Math.Min(renderCountReset + 1, 10);
-        nextRender = renderCountReset;
+        if (autoFrameSkipper) {
+            nextRender--;
+            if (nextRender > 0) return;
+            renderCountReset = Math.Min(renderCountReset + 1, 10);
+            nextRender = renderCountReset;
+        }
 
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
         DisableEdges();
@@ -215,6 +218,8 @@ public class CubeSlicer : MonoBehaviour {
                 }
 
         device?.SendFrame(ledData);
+
+        if (!autoFrameSkipper) return;
         bool areEqual = ledData1.SequenceEqual(ledData2);
         if (!areEqual) {
             renderCountReset = 0;

@@ -10,7 +10,6 @@ public class OKAudioListener : MonoBehaviour {
     public int cubeID;
     SerialDevice device;
 
-    public List<OKAudioSource> audioSources = new List<OKAudioSource>();
     float[] samples = new float[44100];
     [Range(0.0f, 32767)]
     public float vol = 32767;
@@ -34,7 +33,6 @@ public class OKAudioListener : MonoBehaviour {
     }
 
     void Start() {
-        audioSources = FindObjectsOfType<OKAudioSource>().ToList();
         audioData = new short[samplesInBlock];
     }
 
@@ -72,11 +70,13 @@ public class OKAudioListener : MonoBehaviour {
             samplesLen++;
         }
 
-        foreach (var asource in audioSources) {
-            float dist = Vector3.Distance(asource.currPos, currPos);
-            float distVol = Mathf.Min(1, asource.range / dist);
+        foreach (var aSource in OKAudioManager.instance.audioSources) {
+            if (!aSource.HasSamples()) continue;
+            float dist = Vector3.Distance(aSource.currPos, currPos);
+            float distVol = aSource.isSpatial ? Mathf.Min(1, aSource.range / dist) : 1;
+            float _vol = vol * distVol * OKAudioManager.instance.masterVol;
             for (int i = startCount; i < samplesLen; i++) {
-                samples[i] += asource.GetSample(i) * vol * distVol;
+                samples[i] += aSource.GetSample(i) * _vol;
             }
         }
 
