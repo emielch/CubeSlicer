@@ -8,25 +8,30 @@ using UnityEngine.UI;
 public class OKAudioSource : MonoBehaviour {
     public AudioClip audioClip;
     public bool isSpatial = true;
-    [Range(0, 10)]
-    public float range = 1;
+    [Range(0.1f, 5)]
+    public float rolloffScale = 1; // lower number = steeper rolloff
+    [Range(0, 20)]
+    public float minDistance = 1;
+    [Range(0, 100)]
+    public float maxDistance = 100;
     List<float[]> samples;
     [Range(0, 1)]
     public double playFac = 0;
-    public bool play = false;
+    public bool playClip = false;
     public bool loop = false;
+    int playHead = 0;
     [Range(0, 1)]
     public float vol = 1;
     [Range(0, 1)]
     public float[] channelVols;
 
-    int playHead = 0;
-
-    public bool insertNoise = false;
-    public bool insertSine = false;
+    public bool playNoise = false;
+    public bool playSine = false;
     public float sineFreq = 500f;
     float sineStep = 0.05f;
     float sinePhs = 0;
+
+    System.Random random = new System.Random();
 
     public Vector3 currPos { get; private set; }
 
@@ -69,18 +74,18 @@ public class OKAudioSource : MonoBehaviour {
 
     void Update() {
         currPos = transform.position;
-        if (play) {
+        if (playClip) {
             playFac += (double)OKAudioManager.GetFL() / audioClip.samples;
             playHead = (int)(playFac * audioClip.samples);
             if (playHead >= audioClip.samples) {
                 playFac = (double)OKAudioManager.GetFL() / audioClip.samples;
                 playHead = (int)(playFac * audioClip.samples);
-                if (!loop) play = false;
+                if (!loop) playClip = false;
                 if (removeWhenFinished) Destroy(this);
             }
         }
 
-        if (insertSine) {
+        if (playSine) {
             sineStep = sineFreq / OKAudioManager.instance.sampleRate * Mathf.PI * 2;
             sinePhs += sineStep * OKAudioManager.GetPrevFL();
             sinePhs %= Mathf.PI * 2;
@@ -94,20 +99,20 @@ public class OKAudioSource : MonoBehaviour {
         audioClip = _clip;
         vol = _vol;
         removeWhenFinished = true;
-        play = true;
+        playClip = true;
     }
 
     public bool HasSamples() {
-        return insertNoise || insertSine || play;
+        return playNoise || playSine || playClip;
     }
 
     public float GetSample(int id) {
         float sample = 0;
 
-        if (insertNoise) sample += UnityEngine.Random.Range(-1f, 1f) * vol * 0.1f;
-        if (insertSine) sample += MathF.Sin((float)(sinePhs + id * sineStep)) * vol * 0.1f;
+        if (playNoise) sample += ((float)random.NextDouble() * 2 - 1) * vol * 0.1f;
+        if (playSine) sample += MathF.Sin((float)(sinePhs + id * sineStep)) * vol * 0.1f;
 
-        if (play)
+        if (playClip)
             for (int i = 0; i < samples.Count; i++) {
                 sample += samples[i][playHead - OKAudioManager.GetFL() + id] * channelVols[i] * vol;
             }

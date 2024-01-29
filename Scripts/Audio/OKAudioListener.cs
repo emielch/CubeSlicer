@@ -73,7 +73,8 @@ public class OKAudioListener : MonoBehaviour {
         foreach (var aSource in OKAudioManager.instance.audioSources) {
             if (!aSource.HasSamples()) continue;
             float dist = Vector3.Distance(aSource.currPos, currPos);
-            float distVol = aSource.isSpatial ? Mathf.Min(1, aSource.range / dist) : 1;
+            if (dist > aSource.maxDistance) continue;
+            float distVol = aSource.isSpatial ? Mathf.Min(1, aSource.rolloffScale / (Mathf.Max(aSource.minDistance, dist) - aSource.minDistance + aSource.rolloffScale)) : 1;
             float _vol = vol * distVol * OKAudioManager.instance.masterVol;
             for (int i = startCount; i < samplesLen; i++) {
                 samples[i] += aSource.GetSample(i) * _vol;
