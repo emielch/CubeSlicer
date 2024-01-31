@@ -58,7 +58,7 @@ public class SerialDevice {
     public void SendFrame(byte[] data) {
         if (fakeDevice) return;
 
-        lock (port) {
+        if (Monitor.TryEnter(port, 5)) {
             try {
                 port.Write("%");
                 port.Write(data, 0, data.Length);
@@ -66,6 +66,8 @@ public class SerialDevice {
             } catch (Exception e) {
                 Debug.LogException(e);
                 Stop();
+            } finally {
+                Monitor.Exit(port);
             }
         }
     }
@@ -79,7 +81,7 @@ public class SerialDevice {
             Array.Copy(tempBytes, 0, audioByteArray, i * 2, tempBytes.Length);
         }
 
-        lock (port) {
+        if (Monitor.TryEnter(port, 5)) {
             try {
                 port.Write("$");
                 port.Write(audioByteArray, 0, data.Length * 2);
@@ -87,6 +89,8 @@ public class SerialDevice {
             } catch (Exception e) {
                 Debug.LogException(e);
                 Stop();
+            } finally {
+                Monitor.Exit(port);
             }
         }
     }
@@ -94,7 +98,8 @@ public class SerialDevice {
     public void SendBri(float bri) {
         if (fakeDevice) return;
         string formattedString = $"{bri:F1}".PadLeft(5);
-        lock (port) {
+
+        if (Monitor.TryEnter(port, 5)) {
             try {
                 port.Write("b");
                 port.Write(formattedString);
@@ -102,6 +107,8 @@ public class SerialDevice {
             } catch (Exception e) {
                 Debug.LogException(e);
                 Stop();
+            } finally {
+                Monitor.Exit(port);
             }
         }
     }

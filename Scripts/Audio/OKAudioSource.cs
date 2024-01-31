@@ -9,7 +9,7 @@ public class OKAudioSource : MonoBehaviour {
     public AudioClip audioClip;
     public bool isSpatial = true;
     [Range(0.1f, 5)]
-    public float rolloffScale = 1; // lower number = steeper rolloff
+    public float rolloffScale = 1; // lower number = steeper rolloff (https://www.desmos.com/calculator/vo0iegaksz)
     [Range(0, 20)]
     public float minDistance = 1;
     [Range(0, 100)]
