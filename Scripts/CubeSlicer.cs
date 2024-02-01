@@ -12,6 +12,7 @@ public class CubeSlicer : MonoBehaviour {
     byte[] ledData;
     byte[] ledData1;
     byte[] ledData2;
+    System.Object ledDataLock = new System.Object();
     public bool[] rigEnabled = new bool[6];
     public List<CubeCamRig> camRigs = new List<CubeCamRig>();
     public GameObject edges;
@@ -189,43 +190,52 @@ public class CubeSlicer : MonoBehaviour {
 
     void FillLEDData(byte[] rtArray) {
         if (device == null) return;
-        int w = device.deviceInfo.width;
-        int h = device.deviceInfo.height;
-        int d = device.deviceInfo.depth;
+        if (Monitor.TryEnter(ledDataLock, 0)) {
+            try {
+                int w = device.deviceInfo.width;
+                int h = device.deviceInfo.height;
+                int d = device.deviceInfo.depth;
 
-        int id = 0;
-        for (int z = 0; z < d; z++)
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++) {
-                    Color pix = new();
-                    if (rigEnabled[0]) pix += camRigs[0].GetPixel(rtArray, x, y, z);
-                    if (rigEnabled[1]) pix += camRigs[1].GetPixel(rtArray, w - 1 - x, y, d - 1 - z);
-                    if (rigEnabled[2]) pix += camRigs[2].GetPixel(rtArray, d - 1 - z, y, x);
-                    if (rigEnabled[3]) pix += camRigs[3].GetPixel(rtArray, z, y, w - 1 - x);
-                    if (rigEnabled[4]) pix += camRigs[4].GetPixel(rtArray, x, z, h - 1 - y);
-                    if (rigEnabled[5]) pix += camRigs[5].GetPixel(rtArray, x, d - 1 - z, y);
+                int id = 0;
+                for (int z = 0; z < d; z++)
+                    for (int y = 0; y < h; y++)
+                        for (int x = 0; x < w; x++) {
+                            Color pix = new();
+                            if (rigEnabled[0]) pix += camRigs[0].GetPixel(rtArray, x, y, z);
+                            if (rigEnabled[1]) pix += camRigs[1].GetPixel(rtArray, w - 1 - x, y, d - 1 - z);
+                            if (rigEnabled[2]) pix += camRigs[2].GetPixel(rtArray, d - 1 - z, y, x);
+                            if (rigEnabled[3]) pix += camRigs[3].GetPixel(rtArray, z, y, w - 1 - x);
+                            if (rigEnabled[4]) pix += camRigs[4].GetPixel(rtArray, x, z, h - 1 - y);
+                            if (rigEnabled[5]) pix += camRigs[5].GetPixel(rtArray, x, d - 1 - z, y);
 
-                    Color.RGBToHSV(pix, out float H, out float S, out float V);
-                    pix = Color.HSVToRGB(H, Mathf.Min(1, S * sat), V);
+                            Color.RGBToHSV(pix, out float H, out float S, out float V);
+                            pix = Color.HSVToRGB(H, Mathf.Min(1, S * sat), V);
 
-                    float r = pix.r * 255;
-                    float g = pix.g * 255;
-                    float b = pix.b * 255;
+                            float r = pix.r * 255;
+                            float g = pix.g * 255;
+                            float b = pix.b * 255;
 
-                    ledData[id++] = (r > 255.0f) ? (byte)255 : (byte)r;
-                    ledData[id++] = (g > 255.0f) ? (byte)255 : (byte)g;
-                    ledData[id++] = (b > 255.0f) ? (byte)255 : (byte)b;
+                            ledData[id++] = (r > 255.0f) ? (byte)255 : (byte)r;
+                            ledData[id++] = (g > 255.0f) ? (byte)255 : (byte)g;
+                            ledData[id++] = (b > 255.0f) ? (byte)255 : (byte)b;
+                        }
+
+                device?.SendFrame(ledData);
+
+                if (autoFrameSkipper) {
+                    bool areEqual = ledData1.SequenceEqual(ledData2);
+                    if (!areEqual) {
+                        renderCountReset = 0;
+                        nextRender = 0;
+                    }
+                    if (ledData == ledData1) ledData = ledData2;
+                    else ledData = ledData1;
                 }
-
-        device?.SendFrame(ledData);
-
-        if (!autoFrameSkipper) return;
-        bool areEqual = ledData1.SequenceEqual(ledData2);
-        if (!areEqual) {
-            renderCountReset = 0;
-            nextRender = 0;
+            } finally {
+                Monitor.Exit(ledDataLock);
+            }
+        } else {
+            Debug.Log("unable to enter ledDataLock");
         }
-        if (ledData == ledData1) ledData = ledData2;
-        else ledData = ledData1;
     }
 }
