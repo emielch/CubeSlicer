@@ -190,7 +190,7 @@ public class CubeSlicer : MonoBehaviour {
 
     void FillLEDData(byte[] rtArray) {
         if (device == null) return;
-        if (Monitor.TryEnter(ledDataLock, 0)) {
+        if (Monitor.TryEnter(ledDataLock)) {
             try {
                 int w = device.deviceInfo.width;
                 int h = device.deviceInfo.height;
