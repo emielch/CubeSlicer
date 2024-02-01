@@ -17,7 +17,7 @@ public class CubeSlicer : MonoBehaviour {
     public GameObject edges;
     public Material edgesEnabledMat;
     public Material edgesDisabledMat;
-    [Range(0, 100)]
+    [Range(0, 400)]
     public float bri = 100;
     float prevBri = 100;
     [Range(0, 3)]
