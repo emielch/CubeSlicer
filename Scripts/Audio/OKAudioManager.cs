@@ -48,7 +48,7 @@ public class OKAudioManager : MonoBehaviour {
         }
     }
 
-    static public int GetFL() { return instance.frameLen; }
+    static public int GetFrameLen() { return instance.frameLen; }
     static public int GetPrevFL() { return instance.prevFrameLen; }
 
 }

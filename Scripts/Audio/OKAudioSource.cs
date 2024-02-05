@@ -75,10 +75,10 @@ public class OKAudioSource : MonoBehaviour {
     void Update() {
         currPos = transform.position;
         if (playClip) {
-            playFac += (double)OKAudioManager.GetFL() / audioClip.samples;
+            playFac += (double)OKAudioManager.GetFrameLen() / audioClip.samples;
             playHead = (int)(playFac * audioClip.samples);
             if (playHead >= audioClip.samples) {
-                playFac = (double)OKAudioManager.GetFL() / audioClip.samples;
+                playFac = (double)OKAudioManager.GetFrameLen() / audioClip.samples;
                 playHead = (int)(playFac * audioClip.samples);
                 if (!loop) playClip = false;
                 if (removeWhenFinished) Destroy(this);
@@ -114,7 +114,7 @@ public class OKAudioSource : MonoBehaviour {
 
         if (playClip)
             for (int i = 0; i < samples.Count; i++) {
-                sample += samples[i][playHead - OKAudioManager.GetFL() + id] * channelVols[i] * vol;
+                sample += samples[i][playHead - OKAudioManager.GetFrameLen() + id] * channelVols[i] * vol;
             }
         return sample;
     }
