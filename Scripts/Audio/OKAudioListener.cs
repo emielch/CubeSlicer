@@ -15,7 +15,8 @@ public class OKAudioListener : MonoBehaviour {
     public float vol = 32767;
 
     const int samplesInBlock = 128;
-    short[] audioData;
+    const int blocksInAudioData = 6;
+    byte[] audioData;
     int aDataIdx = 0;
 
     Thread processAudioThread;
@@ -35,7 +36,8 @@ public class OKAudioListener : MonoBehaviour {
     }
 
     void Start() {
-        audioData = new short[samplesInBlock];
+        audioData = new byte[samplesInBlock * blocksInAudioData * 2 + blocksInAudioData];
+        audioData[aDataIdx++] = (byte)'$';
     }
 
     public void Init(SerialDevice _device) {
@@ -95,10 +97,15 @@ public class OKAudioListener : MonoBehaviour {
 
             float fraction = inputIndex - index1;
 
-            audioData[aDataIdx++] = (short)((1 - fraction) * samples[index1] + fraction * samples[index2]);
-            if (aDataIdx >= samplesInBlock) {
+            byte[] tempBytes = BitConverter.GetBytes((short)((1 - fraction) * samples[index1] + fraction * samples[index2]));
+            audioData[aDataIdx++] = tempBytes[0];
+            audioData[aDataIdx++] = tempBytes[1];
+            if (aDataIdx >= audioData.Length) {
                 aDataIdx = 0;
-                device?.SendAudio(audioData);
+                device?.SendDirect(audioData);
+            }
+            if (aDataIdx % (samplesInBlock * 2 + 1) == 0) {
+                audioData[aDataIdx++] = (byte)'$';
             }
         }
     }

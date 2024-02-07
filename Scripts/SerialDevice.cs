@@ -95,6 +95,22 @@ public class SerialDevice {
         }
     }
 
+    public void SendDirect(byte[] data) {
+        if (fakeDevice) return;
+
+        if (Monitor.TryEnter(port, 5)) {
+            try {
+                port.Write(data, 0, data.Length);
+                port.BaseStream.Flush();
+            } catch (Exception e) {
+                Debug.LogException(e);
+                Stop();
+            } finally {
+                Monitor.Exit(port);
+            }
+        }
+    }
+
     public void SendBri(float bri) {
         if (fakeDevice) return;
         string formattedString = $"{bri:F1}".PadLeft(5);
