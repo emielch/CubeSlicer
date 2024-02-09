@@ -33,6 +33,8 @@ public class CubeSlicer : MonoBehaviour {
 
     public bool makeListener = true;
 
+    public int overSample = 4;
+
 
     void Awake() {
         if (FindObjectOfType<CubesManager>() == null) {
@@ -84,7 +86,7 @@ public class CubeSlicer : MonoBehaviour {
         go.transform.localPosition = new Vector3(0, 0, 0);
         go.transform.localRotation = angle;
         CubeCamRig rig = go.AddComponent<CubeCamRig>();
-        rig.Init(_rt, ref xpos, ref ypos, w, h, d, cubeScale);
+        rig.Init(_rt, ref xpos, ref ypos, w, h, d, cubeScale, overSample);
 
         return rig;
     }
@@ -114,7 +116,7 @@ public class CubeSlicer : MonoBehaviour {
         int ySize = height * 4;
         ySize += depth * (int)Math.Ceiling((float)(width * height) * 2 / (width * depth));
 
-        rt = new RenderTexture(xSize, ySize, 24);
+        rt = new RenderTexture(xSize * overSample, ySize * overSample, 24);
 
         if (previewPlane != null) {
             previewPlane.material = new Material(Shader.Find("Standard"));
@@ -174,7 +176,8 @@ public class CubeSlicer : MonoBehaviour {
         RenderSettings.ambientSkyColor = new Color(1, 1, 1);
         EnableEdges();
 
-        var renderTexture = RenderTexture.GetTemporary(rt.width, rt.height, 24, RenderTextureFormat.ARGB32);
+        var renderTexture = RenderTexture.GetTemporary(rt.width / overSample, rt.height / overSample, 24, RenderTextureFormat.ARGB32);
+        renderTexture.filterMode = FilterMode.Bilinear;
         Graphics.Blit(rt, renderTexture);
         AsyncGPUReadback.Request(renderTexture, 0, request => {
             if (request.hasError) {

@@ -8,10 +8,12 @@ public class CubeCamRig : MonoBehaviour {
     public Light camLight;
     public RenderTexture rt;
     public int rtWidth;
+    int overSample;
 
-    public void Init(RenderTexture _rt, ref int xpos, ref int ypos, int w, int h, int d, float scale) {
+    public void Init(RenderTexture _rt, ref int xpos, ref int ypos, int w, int h, int d, float scale, int os) {
         rt = _rt;
         rtWidth = rt.width;
+        overSample = os;
 
         GameObject lightObj = new GameObject();
         lightObj.name = "Light";
@@ -43,16 +45,16 @@ public class CubeCamRig : MonoBehaviour {
 
             for (int x = 0; x < w; x++) {
                 for (int y = 0; y < w; y++) {
-                    rtPosLUT[x, y, j] = new Vector2Int(xpos + x, ypos + y);
+                    rtPosLUT[x, y, j] = new Vector2Int(xpos / overSample + x, ypos / overSample + y);
                 }
             }
 
             cam.targetTexture = rt;
-            cam.rect = new Rect(xpos / (float)rt.width, ypos / (float)rt.height, w / (float)rt.width, h / (float)rt.height);
-            xpos += w;
+            cam.rect = new Rect(xpos / (float)rt.width, ypos / (float)rt.height, (w * overSample) / (float)rt.width, (h * overSample) / (float)rt.height);
+            xpos += w * overSample;
             if (xpos >= rt.width) {
                 xpos = 0;
-                ypos += h;
+                ypos += h * overSample;
             }
 
             camObj.SetActive(false);
@@ -75,6 +77,6 @@ public class CubeCamRig : MonoBehaviour {
 
     public int GetRTArrPos(int x, int y, int z) {
         Vector2Int pos = rtPosLUT[x, y, z];
-        return (pos.x + pos.y * rtWidth) * 4;
+        return (pos.x + pos.y * rtWidth / overSample) * 4;
     }
 }

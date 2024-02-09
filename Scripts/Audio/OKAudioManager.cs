@@ -24,6 +24,8 @@ public class OKAudioManager : MonoBehaviour {
             instance = this;
         }
 
+        masterVol = 1;
+
         if (volSlider) {
             SetVolume(volSlider.value);
             volSlider.onValueChanged.AddListener(SetVolume);
