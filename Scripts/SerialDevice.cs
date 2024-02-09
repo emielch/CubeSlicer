@@ -153,7 +153,7 @@ public class SerialDevice {
                     string[] splitDiff = data.Split(',');
                     audioQueueLevel = float.Parse(splitDiff[1]);
                 } else {
-                    Debug.Log(data);
+                    Debug.Log(port.PortName + ": " + data);
                 }
             } catch (TimeoutException) {
 

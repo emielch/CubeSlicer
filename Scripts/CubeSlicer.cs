@@ -238,7 +238,7 @@ public class CubeSlicer : MonoBehaviour {
                 Monitor.Exit(ledDataLock);
             }
         } else {
-            Debug.Log("unable to enter ledDataLock");
+            //Debug.Log("unable to enter ledDataLock");
         }
     }
 }
