@@ -187,8 +187,8 @@ public class CubeSlicer : MonoBehaviour {
                 Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray));
                 fillLEDDataThread.Start();
             }
+            RenderTexture.ReleaseTemporary(renderTexture);
         });
-        RenderTexture.ReleaseTemporary(renderTexture);
     }
 
     void FillLEDData(byte[] rtArray) {
