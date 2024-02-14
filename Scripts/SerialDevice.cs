@@ -66,7 +66,7 @@ public class SerialDevice {
                 port.Write(data, 0, data.Length);
                 port.BaseStream.Flush();
             } catch (Exception e) {
-                Debug.LogException(e);
+                Debug.Log(e);
                 Stop();
             } finally {
                 Monitor.Exit(port);
@@ -90,7 +90,7 @@ public class SerialDevice {
                 port.Write(audioByteArray, 0, data.Length * 2);
                 port.BaseStream.Flush();
             } catch (Exception e) {
-                Debug.LogException(e);
+                Debug.Log(e);
                 Stop();
             } finally {
                 Monitor.Exit(port);
@@ -109,7 +109,7 @@ public class SerialDevice {
                 port.Write(formattedString);
                 port.BaseStream.Flush();
             } catch (Exception e) {
-                Debug.LogException(e);
+                Debug.Log(e);
                 Stop();
             } finally {
                 Monitor.Exit(port);
@@ -163,6 +163,9 @@ public class SerialDevice {
 
             } catch (ThreadAbortException) {
 
+            } catch (IOException e) {
+                Debug.Log(e);
+                Stop();
             } catch (Exception e) {
                 Debug.LogException(e);
                 Stop();
