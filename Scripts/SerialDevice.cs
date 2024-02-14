@@ -15,7 +15,7 @@ public class DeviceInfo {
 
 [Serializable]
 public class SerialDevice {
-    Thread serialRceiveThread;
+    Thread serialReceiveThread;
     SerialPort port;
     bool fakeDevice = false;
     public DeviceInfo deviceInfo;
@@ -27,8 +27,8 @@ public class SerialDevice {
     public void Init(string portName) {
         port = new SerialPort(portName);
 
-        serialRceiveThread = new Thread(ReceiveCubeData);
-        serialRceiveThread.Start();
+        serialReceiveThread = new Thread(ReceiveCubeData);
+        serialReceiveThread.Start();
     }
 
     public void InitFake(DeviceInfo _info) {
@@ -51,14 +51,16 @@ public class SerialDevice {
 
     public void Stop() {
         infoUpdated = true;
+        if (!port.IsOpen) return;
         port.Close();
-        serialRceiveThread.Abort();
+        Debug.Log("port " + port.PortName + " closed");
     }
 
     public void SendFrame(byte[] data) {
         if (fakeDevice) return;
 
         if (Monitor.TryEnter(port, 5)) {
+            if (!port.IsOpen) return;
             try {
                 port.Write("%");
                 port.Write(data, 0, data.Length);
@@ -82,6 +84,7 @@ public class SerialDevice {
         }
 
         if (Monitor.TryEnter(port, 5)) {
+            if (!port.IsOpen) return;
             try {
                 port.Write("$");
                 port.Write(audioByteArray, 0, data.Length * 2);
@@ -100,6 +103,7 @@ public class SerialDevice {
         string formattedString = $"{bri:F1}".PadLeft(5);
 
         if (Monitor.TryEnter(port, 5)) {
+            if (!port.IsOpen) return;
             try {
                 port.Write("b");
                 port.Write(formattedString);
