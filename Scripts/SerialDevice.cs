@@ -1,8 +1,11 @@
+using Leap.Unity.Interaction;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Ports;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using UnityEngine;
 
@@ -15,20 +18,27 @@ public class DeviceInfo {
 
 [Serializable]
 public class SerialDevice {
-    Thread serialReceiveThread;
+    Thread receiveThread;
     SerialPort port;
     bool fakeDevice = false;
     public DeviceInfo deviceInfo;
     public bool infoUpdated = false;
     public float audioQueueLevel = 0;
     public bool Stopped() { return fakeDevice ? false : !port.IsOpen; }
-    byte[] audioByteArray = new byte[1];
+
+    Thread sendThread;
+    AutoResetEvent send_ResetEvent = new AutoResetEvent(false);
+    Queue<byte[]> sendQueue = new Queue<byte[]>();
+    System.Object sendQueueLock = new System.Object();
 
     public void Init(string portName) {
         port = new SerialPort(portName);
 
-        serialReceiveThread = new Thread(ReceiveCubeData);
-        serialReceiveThread.Start();
+        receiveThread = new Thread(ReceiveCubeData);
+        receiveThread.Start();
+
+        sendThread = new Thread(DataSender);
+        sendThread.Start();
     }
 
     public void InitFake(DeviceInfo _info) {
@@ -57,63 +67,59 @@ public class SerialDevice {
     }
 
     public void SendFrame(byte[] data) {
-        if (fakeDevice) return;
+        byte[] preData = new byte[1];
+        preData[0] = (byte)'%';
 
-        if (Monitor.TryEnter(port, 5)) {
-            if (!port.IsOpen) return;
-            try {
-                port.Write("%");
-                port.Write(data, 0, data.Length);
-                port.BaseStream.Flush();
-            } catch (Exception e) {
-                Debug.Log(e);
-                Stop();
-            } finally {
-                Monitor.Exit(port);
-            }
+        lock (sendQueueLock) {
+            sendQueue.Enqueue(preData);
+            sendQueue.Enqueue(data);
+            send_ResetEvent.Set();
         }
     }
 
     public void SendAudio(short[] data) {
-        if (fakeDevice) return;
-        if (audioByteArray.Length < data.Length * 2)
-            audioByteArray = new byte[data.Length * 2]; // 2 bytes per short
+
+        byte[] audioByteArray = new byte[data.Length * 2 + 1]; // 2 bytes per short
+        audioByteArray[0] = (byte)'$';
         for (int i = 0; i < data.Length; i++) {
             byte[] tempBytes = BitConverter.GetBytes(data[i]);
-            Array.Copy(tempBytes, 0, audioByteArray, i * 2, tempBytes.Length);
+            Array.Copy(tempBytes, 0, audioByteArray, i * 2 +1, tempBytes.Length);
         }
 
-        if (Monitor.TryEnter(port, 5)) {
-            if (!port.IsOpen) return;
-            try {
-                port.Write("$");
-                port.Write(audioByteArray, 0, data.Length * 2);
-                port.BaseStream.Flush();
-            } catch (Exception e) {
-                Debug.Log(e);
-                Stop();
-            } finally {
-                Monitor.Exit(port);
-            }
+        lock (sendQueueLock) {
+            sendQueue.Enqueue(audioByteArray);
+            send_ResetEvent.Set();
         }
     }
 
     public void SendBri(float bri) {
-        if (fakeDevice) return;
-        string formattedString = $"{bri:F1}".PadLeft(5);
+        string formattedString = "b" + $"{bri:F1}".PadLeft(5);
+        byte[] data = Encoding.ASCII.GetBytes(formattedString);
 
-        if (Monitor.TryEnter(port, 5)) {
-            if (!port.IsOpen) return;
-            try {
-                port.Write("b");
-                port.Write(formattedString);
-                port.BaseStream.Flush();
-            } catch (Exception e) {
-                Debug.Log(e);
-                Stop();
-            } finally {
-                Monitor.Exit(port);
+        lock (sendQueueLock) {
+            sendQueue.Enqueue(data);
+            send_ResetEvent.Set();
+        }
+    }
+
+    private void DataSender() {
+        while (true) {
+            send_ResetEvent.WaitOne();
+            int queueCount = 1;
+            while (queueCount > 0) {
+                byte[] nextPacket = new byte[0];
+                lock (sendQueueLock) {
+                    queueCount = sendQueue.Count;
+                    if (queueCount > 0) {
+                        nextPacket = sendQueue.Dequeue();
+                    }
+                }
+                if (nextPacket.Length != 0) {
+                    if (!port.IsOpen) continue;
+                    port.Write(nextPacket, 0, nextPacket.Length);
+                }
             }
+
         }
     }
 

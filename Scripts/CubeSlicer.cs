@@ -27,6 +27,11 @@ public class CubeSlicer : MonoBehaviour {
     public MeshRenderer previewPlane;
     private static List<CubeSlicer> instances = new List<CubeSlicer>();
 
+    Thread RTDataProcessThread;
+    AutoResetEvent RTData_ResetEvent = new AutoResetEvent(false);
+    Queue<byte[]> RTDataQueue = new Queue<byte[]>();
+    System.Object RTDataQueueLock = new System.Object();
+
     public bool autoFrameSkipper = true;
     public int nextRender = 1;
     public int renderCountReset = 2;
@@ -138,6 +143,11 @@ public class CubeSlicer : MonoBehaviour {
         camRigs.Add(CreateCamRig(rt, ref xpos, ref ypos, Quaternion.Euler(270, 0, 0), width, depth, height));
 
         device.SendBri(bri);
+
+        if (RTDataProcessThread == null || !RTDataProcessThread.IsAlive) {
+            RTDataProcessThread = new Thread(RTDataProcess);
+            RTDataProcessThread.Start();
+        }
     }
 
     // Update is called once per frame
@@ -146,6 +156,7 @@ public class CubeSlicer : MonoBehaviour {
         if (device.Stopped() || device.deviceInfo.id != cubeID) {
             UpdateEdgesMat(edgesDisabledMat);
             device = null;
+            RTDataProcessThread.Abort();
             return;
         }
 
@@ -183,13 +194,38 @@ public class CubeSlicer : MonoBehaviour {
             if (request.hasError) {
                 Debug.Log("GPU readback error detected.");
             } else {
-                byte[] rtArray = request.GetData<byte>().ToArray();
-                Thread fillLEDDataThread = new Thread(() => FillLEDData(rtArray));
-                fillLEDDataThread.Start();
+                lock (RTDataQueueLock) {
+                    RTDataQueue.Enqueue(request.GetData<byte>().ToArray());
+                    RTData_ResetEvent.Set();
+                }
             }
             RenderTexture.ReleaseTemporary(renderTexture);
         });
     }
+
+    void RTDataProcess() {
+        while (true) {
+            RTData_ResetEvent.WaitOne();
+            int queueCount = 1;
+            while (queueCount > 0) {
+                byte[] nextPacket = new byte[0];
+                lock (RTDataQueueLock) {
+                    queueCount = RTDataQueue.Count;
+                    if (queueCount > 0) {
+                        nextPacket = RTDataQueue.Dequeue();
+                    }
+                }
+                if (nextPacket.Length != 0) {
+                    FillLEDData(nextPacket);
+                }
+            }
+        }
+    }
+
+    void OnApplicationQuit() {
+        RTDataProcessThread.Abort();
+    }
+
 
     void FillLEDData(byte[] rtArray) {
         if (device == null) return;
