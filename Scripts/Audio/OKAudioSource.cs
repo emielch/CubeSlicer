@@ -17,6 +17,7 @@ public class OKAudioSource : MonoBehaviour {
     List<float[]> samples;
     [Range(0, 1)]
     public double playFac = 0;
+    double prevPlayFac = 0;
     public bool playClip = false;
     public bool loop = false;
     int playHead = 0;
@@ -73,17 +74,21 @@ public class OKAudioSource : MonoBehaviour {
     }
 
     void Update() {
+        if (playFac != prevPlayFac) { // the user scrubbed through the audio
+            playHead = (int)(playFac * audioClip.samples);
+        }
+
         currPos = transform.position;
         if (playClip) {
-            playFac += (double)OKAudioManager.GetFrameLen() / audioClip.samples;
-            playHead = (int)(playFac * audioClip.samples);
+            playHead += OKAudioManager.GetFrameLen();
             if (playHead >= audioClip.samples) {
-                playFac = (double)OKAudioManager.GetFrameLen() / audioClip.samples;
-                playHead = (int)(playFac * audioClip.samples);
+                playHead = OKAudioManager.GetFrameLen();
                 if (!loop) playClip = false;
                 if (removeWhenFinished) Destroy(this);
             }
         }
+        playFac = (double)playHead / audioClip.samples;
+        prevPlayFac = playFac;
 
         if (playSine) {
             sineStep = sineFreq / OKAudioManager.instance.sampleRate * Mathf.PI * 2;
