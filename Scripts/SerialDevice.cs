@@ -31,8 +31,30 @@ public class SerialDevice {
     Queue<byte[]> sendQueue = new Queue<byte[]>();
     System.Object sendQueueLock = new System.Object();
 
+    System.Object portLock = new System.Object();
+
     public void Init(string portName) {
         port = new SerialPort(portName);
+
+        // try a couple of times to open the port (not immediately available for opening after inserting USB)
+        int tries = 10;
+        while (tries > 0) {
+            try {
+                port.ReadTimeout = 30000;
+                port.Open();
+                break;
+            } catch (Exception e) {
+                Debug.Log(e);
+                Thread.Sleep(100);
+            }
+            tries--;
+        }
+        if (!port.IsOpen) {
+            Stop();
+            return;
+        }
+
+        port.Write("?"); // request cube info
 
         receiveThread = new Thread(ReceiveCubeData);
         receiveThread.Start();
@@ -63,6 +85,7 @@ public class SerialDevice {
         infoUpdated = true;
         if (!port.IsOpen) return;
         port.Close();
+        sendThread.Abort();
         Debug.Log("port " + port.PortName + " closed");
     }
 
@@ -83,7 +106,7 @@ public class SerialDevice {
         audioByteArray[0] = (byte)'$';
         for (int i = 0; i < data.Length; i++) {
             byte[] tempBytes = BitConverter.GetBytes(data[i]);
-            Array.Copy(tempBytes, 0, audioByteArray, i * 2 +1, tempBytes.Length);
+            Array.Copy(tempBytes, 0, audioByteArray, i * 2 + 1, tempBytes.Length);
         }
 
         lock (sendQueueLock) {
@@ -115,8 +138,14 @@ public class SerialDevice {
                     }
                 }
                 if (nextPacket.Length != 0) {
-                    if (!port.IsOpen) continue;
-                    port.Write(nextPacket, 0, nextPacket.Length);
+                    if (!port.IsOpen) return;
+                    try {
+                        lock (portLock) {
+                            port.Write(nextPacket, 0, nextPacket.Length);
+                        }
+                    } catch {
+                        return;
+                    }
                 }
             }
 
@@ -124,34 +153,21 @@ public class SerialDevice {
     }
 
     void ReceiveCubeData() {
-        // try a couple of times to open the port (not immediately available for opening after inserting USB)
-        int tries = 10;
-        while (tries > 0) {
-            try {
-                port.ReadTimeout = 30000;
-                port.Open();
-                break;
-            } catch (Exception e) {
-                Debug.Log(e);
-                Thread.Sleep(100);
-            }
-            tries--;
-        }
-        if (!port.IsOpen) {
-            Stop();
-            return;
-        }
-
-
-        port.Write("?"); // request cube info
-
         while (true) {
             if (!port.IsOpen) {
                 return;
             }
 
             try {
-                string data = port.ReadLine();
+                if (port.BytesToRead < 1) {
+                    Thread.Sleep(10); // Adjust the sleep time as needed
+                    continue;
+                }
+
+                string data;
+                lock (portLock) {
+                    data = port.ReadLine();
+                }
                 if (data.StartsWith("CUBE")) {
                     DeviceInfo newInfo = ParseInfo(data);
                     if (deviceInfo == null || newInfo != null) {
