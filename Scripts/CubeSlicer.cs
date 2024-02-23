@@ -65,18 +65,6 @@ public class CubeSlicer : MonoBehaviour {
         instances.Remove(this);
     }
 
-    public static void EnableEdges() {
-        foreach (var instance in instances) {
-            instance.edges.SetActive(true);
-        }
-    }
-
-    public static void DisableEdges() {
-        foreach (var instance in instances) {
-            instance.edges.SetActive(false);
-        }
-    }
-
     void UpdateEdgesMat(Material mat) {
         MeshRenderer[] mrs = edges.GetComponentsInChildren<MeshRenderer>();
         foreach (var mr in mrs) {
@@ -178,14 +166,12 @@ public class CubeSlicer : MonoBehaviour {
         }
 
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
-        DisableEdges();
 
         for (int i = 0; i < camRigs.Count; i++) {
             if (rigEnabled[i]) camRigs[i].Render();
         }
 
         RenderSettings.ambientSkyColor = new Color(1, 1, 1);
-        EnableEdges();
 
         var renderTexture = RenderTexture.GetTemporary(rt.width / overSample, rt.height / overSample, 24, RenderTextureFormat.ARGB32);
         renderTexture.filterMode = FilterMode.Bilinear;

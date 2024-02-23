@@ -28,6 +28,8 @@ public class CubeCamRig : MonoBehaviour {
         cams = new List<Camera>();
         rtPosLUT = new Vector2Int[w, h, d];
 
+        int edgesLayer = 31; // LayerMask.NameToLayer("CubeEdges");
+
         for (int j = 0; j < d; j++) {
             GameObject camObj = new GameObject();
             camObj.name = "Camera";
@@ -42,6 +44,7 @@ public class CubeCamRig : MonoBehaviour {
             cam.useOcclusionCulling = false;
             cam.transform.localRotation = Quaternion.Euler(0, 0, 0);
             cam.transform.localPosition = new Vector3(0, 0, -1.5F * scale);
+            cam.cullingMask &= ~(1 << edgesLayer);
 
             for (int x = 0; x < w; x++) {
                 for (int y = 0; y < w; y++) {
