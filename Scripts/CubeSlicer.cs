@@ -209,7 +209,7 @@ public class CubeSlicer : MonoBehaviour {
     }
 
     void OnApplicationQuit() {
-        RTDataProcessThread.Abort();
+        RTDataProcessThread?.Abort();
     }
 
 
