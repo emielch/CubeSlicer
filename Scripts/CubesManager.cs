@@ -8,13 +8,31 @@ using System.Threading;
 using System.Linq;
 using System;
 
+[DefaultExecutionOrder(-3)]
 public class CubesManager : MonoBehaviour {
+    public static CubesManager instance;
     public string[] portNames = { };
     public List<SerialDevice> serialDevices;
     public List<CubeSlicer> cubeSlicers;
     public List<OKAudioListener> audioListeners;
     public bool fakeCubes = false;
+    public bool pauseStreaming = false;
 
+    void Awake() {
+        // If there is an instance, and it's not me, delete myself.
+        if (instance != null && instance != this) {
+            Destroy(this);
+        } else {
+            instance = this;
+        }
+    }
+    static public void SetupInstance() {
+        if (FindObjectOfType<CubesManager>() == null) {
+            GameObject cubesManagerGO = new GameObject();
+            cubesManagerGO.name = "CubesManager";
+            cubesManagerGO.AddComponent<CubesManager>();
+        }
+    }
 
     void Start() {
         serialDevices = new List<SerialDevice>();

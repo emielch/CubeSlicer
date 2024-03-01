@@ -42,11 +42,7 @@ public class CubeSlicer : MonoBehaviour {
 
 
     void Awake() {
-        if (FindObjectOfType<CubesManager>() == null) {
-            GameObject cubesManagerGO = new GameObject();
-            cubesManagerGO.name = "CubesManager";
-            cubesManagerGO.AddComponent<CubesManager>();
-        }
+        CubesManager.SetupInstance();
         UpdateEdgesMat(edgesDisabledMat);
         nextRender = UnityEngine.Random.Range(1, 20);
 
@@ -98,9 +94,6 @@ public class CubeSlicer : MonoBehaviour {
         ledData2 = new byte[device.deviceInfo.width * device.deviceInfo.height * device.deviceInfo.depth * 3];
         ledData = ledData1;
 
-        RenderSettings.ambientMode = AmbientMode.Flat;
-        RenderSettings.ambientSkyColor = new Color(0, 0, 0);
-
         int width = device.deviceInfo.width;
         int height = device.deviceInfo.height;
         int depth = device.deviceInfo.depth;
@@ -150,8 +143,10 @@ public class CubeSlicer : MonoBehaviour {
 
         if (bri != prevBri) {
             prevBri = bri;
-            device.SendBri(bri);
+            device.SendBri(bri, CubesManager.instance.pauseStreaming);
         }
+
+        if (CubesManager.instance.pauseStreaming) return;
 
         if (cubeScale != transform.lossyScale.x) {
             cubeScale = transform.lossyScale.x;
@@ -165,12 +160,16 @@ public class CubeSlicer : MonoBehaviour {
             nextRender = renderCountReset;
         }
 
+        AmbientMode ambientMode = RenderSettings.ambientMode;
+        RenderSettings.ambientMode = AmbientMode.Flat;
+        Color prevSkyColor = RenderSettings.ambientSkyColor;
         RenderSettings.ambientSkyColor = new Color(0, 0, 0);
 
         for (int i = 0; i < camRigs.Count; i++) {
             if (rigEnabled[i]) camRigs[i].Render();
         }
 
+        RenderSettings.ambientMode = ambientMode;
         RenderSettings.ambientSkyColor = new Color(1, 1, 1);
 
         var renderTexture = RenderTexture.GetTemporary(rt.width / overSample, rt.height / overSample, 24, RenderTextureFormat.ARGB32);

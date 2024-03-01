@@ -115,8 +115,8 @@ public class SerialDevice {
         }
     }
 
-    public void SendBri(float bri) {
-        string formattedString = "b" + $"{bri:F1}".PadLeft(5);
+    public void SendBri(float bri, bool demoBri = false) {
+        string formattedString = (demoBri ? "B" : "b") + $"{bri:F1}".PadLeft(5);
         byte[] data = Encoding.ASCII.GetBytes(formattedString);
 
         lock (sendQueueLock) {
