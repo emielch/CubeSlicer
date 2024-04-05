@@ -105,7 +105,6 @@ public class CubeSlicer : MonoBehaviour {
         rt = new RenderTexture(xSize * overSample, ySize * overSample, 24);
 
         if (previewPlane != null) {
-            previewPlane.material = new Material(Shader.Find("Unlit/Texture"));
             previewPlane.material.mainTexture = rt;
         }
 
