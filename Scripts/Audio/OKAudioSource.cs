@@ -1,30 +1,39 @@
+using CSCore;
+using CSCore.Codecs.RAW;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
 [DefaultExecutionOrder(-2)]
 public class OKAudioSource : MonoBehaviour {
     public AudioClip audioClip;
+
+    private IWaveSource shiftedSource;
+    private SoundTouchSource soundTouch;
+    MemoryStream memoryStream;
+    WaveFormat waveFormat;
+    RawDataReader source;
+
     public bool isSpatial = true;
-    [Range(0.1f, 5)]
+    [Range(0.001f, 5)]
     public float rolloffScale = 1; // lower number = steeper rolloff (https://www.desmos.com/calculator/vo0iegaksz)
     [Range(0, 20)]
     public float minDistance = 1;
     [Range(0, 100)]
-    public float maxDistance = 100;
-    List<float[]> samples;
-    [Range(0, 1)]
-    public double playFac = 0;
-    double prevPlayFac = 0;
+    public float maxDistance = 10;
+    float[] samples = new float[10];
     public bool playClip = false;
     public bool loop = false;
-    int playHead = 0;
+
     [Range(0, 1)]
     public float vol = 1;
-    [Range(0, 1)]
-    public float[] channelVols;
+
+    [Range(-10, 10)]
+    public float pitch = 0;
+    private float prevPitch = 0;
 
     public bool playNoise = false;
     public bool playSine = false;
@@ -40,32 +49,37 @@ public class OKAudioSource : MonoBehaviour {
 
     public Slider volSlider;
 
+    int channelCount;
+    int sampleCount;
+    float prevLastSample = 0;
+
     void Awake() {
         OKAudioManager.SetupInstance();
     }
 
     void Start() {
         if (audioClip == null) return;
-        int channelCount = audioClip.channels;
-        int sampleCount = audioClip.samples;
+        channelCount = audioClip.channels;
+        sampleCount = audioClip.samples;
         float[] audioData = new float[sampleCount * channelCount];
         audioClip.GetData(audioData, 0);
 
-        samples = new List<float[]>(channelCount);
+        byte[] bytes = new byte[audioData.Length * 2]; // 2 bytes per 16-bit value
 
-        for (int channel = 0; channel < channelCount; channel++) {
-            float[] channelData = new float[sampleCount];
-
-            for (int i = 0; i < sampleCount; i++) {
-                // Extract channel data
-                channelData[i] = audioData[i * channelCount + channel];
-            }
-
-            samples.Add(channelData);
+        for (int i = 0; i < audioData.Length; i++) {
+            short scaledValue = (short)(audioData[i] * 32767); // Scale float value to 16-bit range
+            byte[] valueBytes = BitConverter.GetBytes(scaledValue); // Get bytes of 16-bit value
+            bytes[i * 2] = valueBytes[0]; // Store first byte
+            bytes[i * 2 + 1] = valueBytes[1]; // Store second byte
         }
 
-        channelVols = new float[channelCount];
-        Array.Fill(channelVols, 1);
+        memoryStream = new MemoryStream(bytes);
+        waveFormat = new WaveFormat(44100, 16, channelCount);
+        source = new RawDataReader(memoryStream, waveFormat);
+        soundTouch = new SoundTouchSource(source.ToSampleSource(), 10);
+
+        shiftedSource = soundTouch.ToWaveSource(16); // 16-bit PCM format
+
 
         if (volSlider) {
             SetVolume(volSlider.value);
@@ -74,27 +88,45 @@ public class OKAudioSource : MonoBehaviour {
     }
 
     void Update() {
-        if (playFac != prevPlayFac) { // the user scrubbed through the audio
-            playHead = (int)(playFac * audioClip.samples);
+        currPos = transform.position;
+
+        if (playClip && source.Position >= source.Length) {
+            source.SetPosition(TimeSpan.Zero);
+            if (!loop) playClip = false;
+            if (removeWhenFinished) Destroy(this);
         }
 
-        currPos = transform.position;
         if (playClip) {
-            playHead += OKAudioManager.GetFrameLen();
-            if (playHead >= audioClip.samples) {
-                playHead = OKAudioManager.GetFrameLen();
-                if (!loop) playClip = false;
-                if (removeWhenFinished) Destroy(this);
+            if (pitch != prevPitch) {
+                prevPitch = pitch;
+                soundTouch.SetPitch(pitch);
             }
+
+            int FL = OKAudioManager.GetFrameLen() * 2 * channelCount;
+            byte[] aData = new byte[FL];
+            shiftedSource.Read(aData, 0, aData.Length);
+
+            if (samples.Length < OKAudioManager.GetFrameLen() + 1) {
+                samples = new float[OKAudioManager.GetFrameLen() + 1];
+            }
+
+            samples[0] = prevLastSample;
+            for (int channel = 0; channel < channelCount; channel++) {
+                for (int i = 0; i < OKAudioManager.GetFrameLen(); i++) {
+                    short value16Bit = BitConverter.ToInt16(aData, (i * channelCount + channel) * 2);
+                    if (channel == 0) samples[i + 1] = 0;
+                    samples[i + 1] += value16Bit / 65535f / channelCount;
+                }
+            }
+            prevLastSample = samples[OKAudioManager.GetFrameLen()];
         }
-        playFac = (double)playHead / audioClip.samples;
-        prevPlayFac = playFac;
 
         if (playSine) {
             sineStep = sineFreq / OKAudioManager.instance.sampleRate * Mathf.PI * 2;
             sinePhs += sineStep * OKAudioManager.GetPrevFL();
             sinePhs %= Mathf.PI * 2;
         }
+
     }
     public void SetVolume(float _vol) {
         vol = MathF.Pow(_vol, 3f);
@@ -117,11 +149,16 @@ public class OKAudioSource : MonoBehaviour {
         if (playNoise) sample += ((float)random.NextDouble() * 2 - 1) * vol * 0.1f;
         if (playSine) sample += MathF.Sin((float)(sinePhs + id * sineStep)) * vol * 0.1f;
 
-        if (playClip)
-            for (int i = 0; i < samples.Count; i++) {
-                sample += samples[i][playHead - OKAudioManager.GetFrameLen() + id] * channelVols[i] * vol;
-            }
+        if (playClip) sample += samples[id] * vol;
+
         return sample;
+    }
+
+    private void OnDestroy() {
+        shiftedSource.Dispose();
+        soundTouch.Dispose();
+        memoryStream.Dispose();
+        source.Dispose();
     }
 
 }
