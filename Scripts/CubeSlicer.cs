@@ -102,6 +102,7 @@ public class CubeSlicer : MonoBehaviour {
         int ySize = height * 4;
         ySize += depth * (int)Math.Ceiling((float)(width * height) * 2 / (width * depth));
 
+        if (rt) Destroy(rt);
         rt = new RenderTexture(xSize * overSample, ySize * overSample, 24);
 
         if (previewPlane != null) {
@@ -146,7 +147,10 @@ public class CubeSlicer : MonoBehaviour {
 
         if (cubeScale != transform.lossyScale.x) {
             cubeScale = transform.lossyScale.x;
-            Init(device);
+            foreach (var camRig in camRigs) {
+                camRig.setScale(cubeScale);
+                camRig.transform.localScale = Vector3.one / cubeScale;
+            }
         }
 
         if (autoFrameSkipper) {

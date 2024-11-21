@@ -73,6 +73,16 @@ public class CubeCamRig : MonoBehaviour {
         camLight.gameObject.SetActive(false);
     }
 
+    public void setScale(float scale) {
+        for (int i = 0; i < cams.Count; i++) {
+            var cam = cams[i];
+            cam.orthographicSize = 0.5F * scale;
+            cam.nearClipPlane = (1 + (1F / cams.Count) * i) * scale;
+            cam.farClipPlane = (1 + (1F / cams.Count) * (i + 1)) * scale;
+            cam.transform.localPosition = new Vector3(0, 0, -1.5F * scale);
+        }
+    }
+
     public Color GetPixel(byte[] rtArray, int x, int y, int z) {
         int pos = GetRTArrPos(x, y, z);
         return new Color(rtArray[pos] / 255f, rtArray[pos + 1] / 255f, rtArray[pos + 2] / 255f);
