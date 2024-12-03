@@ -82,7 +82,7 @@ public class CubeSlicer : MonoBehaviour {
 
     public void Init(SerialDevice _device) {
         foreach (var rig in camRigs) {
-            Destroy(rig);
+            Destroy(rig.gameObject);
         }
         camRigs.Clear();
 
